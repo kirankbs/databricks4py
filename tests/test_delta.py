@@ -168,12 +168,8 @@ class TestDeltaTableAppender:
             spark=spark_session_function,
         )
 
-        df1 = spark_session_function.createDataFrame(
-            [{"id": 1, "name": "a"}], schema=SIMPLE_SCHEMA
-        )
-        df2 = spark_session_function.createDataFrame(
-            [{"id": 2, "name": "b"}], schema=SIMPLE_SCHEMA
-        )
+        df1 = spark_session_function.createDataFrame([{"id": 1, "name": "a"}], schema=SIMPLE_SCHEMA)
+        df2 = spark_session_function.createDataFrame([{"id": 2, "name": "b"}], schema=SIMPLE_SCHEMA)
 
         appender.append(df1)
         appender.append(df2)
@@ -199,9 +195,7 @@ class TestDeltaTableOverwriter:
             [{"id": 1, "name": "a"}, {"id": 2, "name": "b"}],
             schema=SIMPLE_SCHEMA,
         )
-        df2 = spark_session_function.createDataFrame(
-            [{"id": 3, "name": "c"}], schema=SIMPLE_SCHEMA
-        )
+        df2 = spark_session_function.createDataFrame([{"id": 3, "name": "c"}], schema=SIMPLE_SCHEMA)
 
         overwriter.overwrite(df1)
         assert overwriter.dataframe().count() == 2

@@ -239,12 +239,8 @@ class DeltaTable:
             replacement_table_name,
             recovery_table_name,
         )
-        self._spark.sql(
-            f"ALTER TABLE {self._table_name} RENAME TO {recovery_table_name}"
-        )
-        self._spark.sql(
-            f"ALTER TABLE {replacement_table_name} RENAME TO {self._table_name}"
-        )
+        self._spark.sql(f"ALTER TABLE {self._table_name} RENAME TO {recovery_table_name}")
+        self._spark.sql(f"ALTER TABLE {replacement_table_name} RENAME TO {self._table_name}")
         logger.info("Table replacement complete")
 
     @classmethod

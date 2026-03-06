@@ -21,9 +21,7 @@ class TestDropDuplicates:
         assert result.count() == 2
 
     def test_dedup_subset(self, spark_session_function: pyspark.sql.SparkSession) -> None:
-        df = spark_session_function.createDataFrame(
-            [{"id": 1, "v": "a"}, {"id": 1, "v": "b"}]
-        )
+        df = spark_session_function.createDataFrame([{"id": 1, "v": "a"}, {"id": 1, "v": "b"}])
         result = DropDuplicates(subset=["id"]).apply(df)
         assert result.count() == 1
 

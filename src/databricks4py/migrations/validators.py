@@ -27,9 +27,8 @@ class MigrationError(Exception):
     def __init__(self, table_name: str, errors: list[str]) -> None:
         self.table_name = table_name
         self.errors = errors
-        message = (
-            f"Migration validation failed for '{table_name}':\n"
-            + "\n".join(f"  - {e}" for e in errors)
+        message = f"Migration validation failed for '{table_name}':\n" + "\n".join(
+            f"  - {e}" for e in errors
         )
         super().__init__(message)
 
