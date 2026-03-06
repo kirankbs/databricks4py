@@ -9,6 +9,7 @@ from databricks4py.io.delta import (
     optimize_table,
     vacuum_table,
 )
+from databricks4py.io.streaming import StreamingTableReader, StreamingTriggerOptions
 
 __all__ = [
     # DBFS
@@ -21,4 +22,7 @@ __all__ = [
     "GeneratedColumn",
     "optimize_table",
     "vacuum_table",
+    # Streaming
+    "StreamingTableReader",
+    "StreamingTriggerOptions",
 ]
