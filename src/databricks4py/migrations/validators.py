@@ -105,10 +105,12 @@ class TableValidator:
 
     def _table_exists(self) -> bool:
         """Check if the table exists in the catalog."""
+        from pyspark.errors import AnalysisException
+
         try:
             self._spark.sql(f"DESCRIBE TABLE {self._table_name}")
             return True
-        except Exception:
+        except AnalysisException:
             return False
 
     def _get_actual_columns(self) -> set[str]:

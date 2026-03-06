@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.types import StructType
@@ -111,6 +111,7 @@ class DeltaTable:
     def _ensure_table_exists(self) -> None:
         """Create the table if it doesn't exist."""
         from delta.tables import DeltaTable as _DeltaTable
+        from pyspark.errors import AnalysisException
 
         try:
             if self._location:
@@ -118,7 +119,7 @@ class DeltaTable:
             else:
                 _DeltaTable.forName(self._spark, self._table_name)
             logger.debug("Table %s already exists", self._table_name)
-        except Exception:
+        except AnalysisException:
             self._create_table()
 
     def _create_table(self) -> None:
@@ -170,7 +171,7 @@ class DeltaTable:
             return self._spark.read.format("delta").load(self._location)
         return self._spark.read.table(self._table_name)
 
-    def write(self, df: DataFrame, mode: str = "append") -> None:
+    def write(self, df: DataFrame, mode: Literal["append", "overwrite"] = "append") -> None:
         """Write a DataFrame to the table.
 
         Args:

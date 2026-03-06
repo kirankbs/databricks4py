@@ -30,7 +30,7 @@ class EventStreamProcessor(StreamingTableReader):
             source_table="bronze.raw_stream",
             trigger=trigger,
             checkpoint_location=checkpoint_location,
-            filter=DropDuplicates(subset=["event_id"]),
+            row_filter=DropDuplicates(subset=["event_id"]),
             spark=spark,
         )
         self._output = DeltaTableAppender(

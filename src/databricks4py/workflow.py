@@ -9,6 +9,7 @@ from typing import Any
 
 from pyspark.sql import SparkSession
 
+from databricks4py.io import dbfs
 from databricks4py.logging import configure_logging, get_logger
 from databricks4py.secrets import inject_dbutils
 from databricks4py.spark_session import active_fallback
@@ -25,7 +26,7 @@ class Workflow(ABC):
 
     - SparkSession (via :func:`~databricks4py.spark_session.active_fallback`)
     - Logging configuration
-    - dbutils injection (optional)
+    - dbutils injection for both secrets and DBFS (optional)
 
     Subclasses implement :meth:`run` with business logic.
 
@@ -36,7 +37,7 @@ class Workflow(ABC):
                 df = self.spark.read.table("source")
                 df.write.format("delta").saveAsTable("target")
 
-        # As a CLI entry point:
+        # As a CLI entry point (pyspark.dbutils only on Databricks Runtime):
         def main():
             import pyspark.dbutils
             MyETL(dbutils=pyspark.dbutils).execute()
@@ -44,6 +45,7 @@ class Workflow(ABC):
     Args:
         spark: Optional SparkSession. Defaults to active session.
         dbutils: Optional dbutils module for secret/file operations.
+            Only available on Databricks Runtime (``pyspark.dbutils``).
         log_level: Logging level (default INFO).
     """
 
@@ -51,20 +53,21 @@ class Workflow(ABC):
         self,
         *,
         spark: SparkSession | None = None,
-        dbutils: Any | None = None,
+        dbutils: Any = None,
         log_level: int = logging.INFO,
     ) -> None:
         configure_logging(level=log_level)
         self._spark = active_fallback(spark)
-        self._dbutils: Any | None = None
-        self._execution_time: datetime | None = None
+        self._dbutils: Any = None
+        self._execution_time: datetime = datetime.now()
 
         if dbutils is not None:
             try:
                 inject_dbutils(dbutils)
+                dbfs.inject_dbutils_module(dbutils)
                 self._dbutils = dbutils
-            except Exception:
-                logger.info("dbutils injection failed (running outside Databricks)")
+            except (ImportError, AttributeError, TypeError) as exc:
+                logger.warning("dbutils injection failed: %s (running outside Databricks?)", exc)
 
     @property
     def spark(self) -> SparkSession:
@@ -72,14 +75,14 @@ class Workflow(ABC):
         return self._spark
 
     @property
-    def dbutils(self) -> Any | None:
+    def dbutils(self) -> Any:
         """The dbutils module, or None if not in Databricks."""
         return self._dbutils
 
     @property
     def execution_time(self) -> datetime:
-        """The logical execution time (set by run_at_time, or now)."""
-        return self._execution_time or datetime.now()
+        """The logical execution time (set by run_at_time, or defaults to init time)."""
+        return self._execution_time
 
     @abstractmethod
     def run(self) -> None:

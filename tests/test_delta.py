@@ -29,7 +29,7 @@ class TestGeneratedColumn:
 
     def test_frozen(self) -> None:
         gc = GeneratedColumn("a", "STRING", "expr")
-        with pytest.raises(AttributeError):
+        with pytest.raises(AttributeError, match="cannot assign"):
             gc.name = "b"  # type: ignore[misc]
 
 
@@ -122,6 +122,21 @@ class TestDeltaTable:
             spark=spark_session_function,
         )
         assert table.partition_columns() == ["id"]
+
+    def test_size_in_bytes(
+        self,
+        spark_session_function: pyspark.sql.SparkSession,
+        tmp_path,
+    ) -> None:
+        location = str(tmp_path / "test_size")
+        table = DeltaTable.from_data(
+            [{"id": 1, "name": "alice"}],
+            table_name="default.test_size",
+            schema=SIMPLE_SCHEMA,
+            location=location,
+            spark=spark_session_function,
+        )
+        assert table.size_in_bytes() > 0
 
     def test_from_data(
         self,
@@ -221,6 +236,39 @@ class TestOptimizeVacuum:
         )
         # Should not raise
         optimize_table("default.test_opt", spark=spark_session_function)
+
+    def test_optimize_with_zorder(
+        self,
+        spark_session_function: pyspark.sql.SparkSession,
+        tmp_path,
+    ) -> None:
+        location = str(tmp_path / "test_opt_z")
+        DeltaTable.from_data(
+            [{"id": 1, "name": "a"}],
+            table_name="default.test_opt_z",
+            schema=SIMPLE_SCHEMA,
+            location=location,
+            spark=spark_session_function,
+        )
+        # Should not raise
+        optimize_table("default.test_opt_z", zorder_by="name", spark=spark_session_function)
+
+    def test_optimize_with_zorder_list(
+        self,
+        spark_session_function: pyspark.sql.SparkSession,
+        tmp_path,
+    ) -> None:
+        location = str(tmp_path / "test_opt_zl")
+        DeltaTable.from_data(
+            [{"id": 1, "name": "a"}],
+            table_name="default.test_opt_zl",
+            schema=SIMPLE_SCHEMA,
+            location=location,
+            spark=spark_session_function,
+        )
+        optimize_table(
+            "default.test_opt_zl", zorder_by=["id", "name"], spark=spark_session_function
+        )
 
     def test_vacuum(
         self,

@@ -44,6 +44,10 @@ class Filter(ABC):
         ...
 
     def __call__(self, df: DataFrame) -> DataFrame:
+        """Apply the filter (callable interface).
+
+        Equivalent to calling :meth:`apply`.
+        """
         return self.apply(df)
 
 
@@ -63,11 +67,23 @@ class FilterPipeline(Filter):
     def __init__(self, filters: Sequence[Filter] | None = None) -> None:
         self._filters: list[Filter] = list(filters or [])
 
-    def add(self, f: Filter) -> None:
-        """Add a filter to the pipeline."""
-        self._filters.append(f)
+    def add(self, filter_: Filter) -> None:
+        """Append a filter to the end of the pipeline.
+
+        Args:
+            filter_: The filter to add.
+        """
+        self._filters.append(filter_)
 
     def apply(self, df: DataFrame) -> DataFrame:
+        """Apply all filters in sequence.
+
+        Args:
+            df: Input DataFrame.
+
+        Returns:
+            DataFrame after all filters have been applied.
+        """
         for f in self._filters:
             df = f(df)
         return df
