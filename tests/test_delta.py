@@ -153,6 +153,64 @@ class TestDeltaTable:
         )
         assert table.dataframe().count() == 2
 
+    def test_replace_data(
+        self,
+        spark_session_function: pyspark.sql.SparkSession,
+        tmp_path,
+    ) -> None:
+        loc_original = str(tmp_path / "test_replace_orig")
+        loc_replacement = str(tmp_path / "test_replace_new")
+
+        original = DeltaTable.from_data(
+            [{"id": 1, "name": "old"}],
+            table_name="default.test_replace_orig",
+            schema=SIMPLE_SCHEMA,
+            location=loc_original,
+            spark=spark_session_function,
+        )
+        DeltaTable.from_data(
+            [{"id": 2, "name": "new"}, {"id": 3, "name": "newer"}],
+            table_name="default.test_replace_new",
+            schema=SIMPLE_SCHEMA,
+            location=loc_replacement,
+            spark=spark_session_function,
+        )
+
+        original.replace_data(
+            replacement_table_name="default.test_replace_new",
+            recovery_table_name="default.test_replace_recovery",
+        )
+
+        # Original table name now has the replacement data
+        result = spark_session_function.read.table("default.test_replace_orig")
+        assert result.count() == 2
+
+        # Recovery table has the old data
+        recovery = spark_session_function.read.table("default.test_replace_recovery")
+        assert recovery.count() == 1
+
+    def test_from_parquet(
+        self,
+        spark_session_function: pyspark.sql.SparkSession,
+        tmp_path,
+    ) -> None:
+        # Write some parquet data first
+        parquet_path = str(tmp_path / "source.parquet")
+        spark_session_function.createDataFrame(
+            [{"id": 1, "name": "a"}, {"id": 2, "name": "b"}],
+            schema=SIMPLE_SCHEMA,
+        ).write.parquet(parquet_path)
+
+        location = str(tmp_path / "test_from_parquet")
+        table = DeltaTable.from_parquet(
+            parquet_path,
+            table_name="default.test_from_parquet",
+            schema=SIMPLE_SCHEMA,
+            location=location,
+            spark=spark_session_function,
+        )
+        assert table.dataframe().count() == 2
+
     def test_repr(
         self,
         spark_session_function: pyspark.sql.SparkSession,

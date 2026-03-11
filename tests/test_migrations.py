@@ -150,3 +150,69 @@ class TestTableValidator:
         result = validator.validate()
         assert not result.is_valid
         assert any("Partition mismatch" in e for e in result.errors)
+
+    def test_validate_location_contains(
+        self,
+        spark_session_function: pyspark.sql.SparkSession,
+        tmp_path,
+    ) -> None:
+        location = str(tmp_path / "val_loc")
+        DeltaTable(
+            table_name="default.val_loc",
+            schema=SCHEMA,
+            location=location,
+            spark=spark_session_function,
+        )
+
+        validator = TableValidator(
+            table_name="default.val_loc",
+            expected_location_contains="val_loc",
+            spark=spark_session_function,
+        )
+        result = validator.validate()
+        assert result.is_valid
+
+    def test_validate_location_contains_mismatch(
+        self,
+        spark_session_function: pyspark.sql.SparkSession,
+        tmp_path,
+    ) -> None:
+        location = str(tmp_path / "val_loc_miss")
+        DeltaTable(
+            table_name="default.val_loc_miss",
+            schema=SCHEMA,
+            location=location,
+            spark=spark_session_function,
+        )
+
+        validator = TableValidator(
+            table_name="default.val_loc_miss",
+            expected_location_contains="/nonexistent/path",
+            spark=spark_session_function,
+        )
+        result = validator.validate()
+        assert not result.is_valid
+        assert any("does not contain" in e for e in result.errors)
+
+    def test_validate_extra_columns_warning(
+        self,
+        spark_session_function: pyspark.sql.SparkSession,
+        tmp_path,
+    ) -> None:
+        location = str(tmp_path / "val_extra")
+        DeltaTable(
+            table_name="default.val_extra",
+            schema=SCHEMA,
+            location=location,
+            spark=spark_session_function,
+        )
+
+        # Only expect "id" — "name" is extra
+        validator = TableValidator(
+            table_name="default.val_extra",
+            expected_columns=["id"],
+            spark=spark_session_function,
+        )
+        result = validator.validate()
+        assert result.is_valid
+        assert any("extra columns" in w.lower() for w in result.warnings)

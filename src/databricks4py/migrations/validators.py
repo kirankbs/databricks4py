@@ -160,6 +160,9 @@ class TableValidator:
             missing = set(self._expected_columns) - actual
             if missing:
                 errors.append(f"Missing required columns: {sorted(missing)}")
+            extra = actual - set(self._expected_columns)
+            if extra:
+                warnings.append(f"Unexpected extra columns: {sorted(extra)}")
 
         if self._expected_partition_columns:
             actual_partitions = self._get_actual_partitions()

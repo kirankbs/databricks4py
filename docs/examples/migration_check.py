@@ -1,9 +1,12 @@
-"""Example: Migration validation using databricks4py.
+"""Databricks pattern: Two-stage table migration with validation.
 
-Demonstrates:
-- TableValidator for structural validation
-- ValidationResult with raise_if_invalid()
-- Two-stage migration pattern with DeltaTable.replace_data()
+Shows the full migration workflow:
+1. Create new table with updated schema (including generated columns)
+2. Validate structure with TableValidator before swapping
+3. Atomic replace_data() to swap production table
+
+Note: Designed to run on Databricks Runtime. For local examples, see quickstart.py.
+      pyspark.dbutils is only available on Databricks Runtime.
 """
 
 from pyspark.sql.types import DateType, IntegerType, StringType, StructField, StructType
