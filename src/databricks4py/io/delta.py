@@ -9,6 +9,7 @@ from typing import Any
 
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.types import StructType
+from pyspark.sql.utils import AnalysisException
 
 from databricks4py.spark_session import active_fallback
 
@@ -118,7 +119,7 @@ class DeltaTable:
             else:
                 _DeltaTable.forName(self._spark, self._table_name)
             logger.debug("Table %s already exists", self._table_name)
-        except Exception:
+        except AnalysisException:
             self._create_table()
 
     def _create_table(self) -> None:

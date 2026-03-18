@@ -5,22 +5,21 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-__all__ = ["copy_from_remote", "inject_dbutils_module"]
+__all__ = ["copy_from_remote", "inject_dbutils_module", "_set_dbutils_module"]
 
 logger = logging.getLogger(__name__)
 
 _dbutils_module: Any = None
 
 
-def inject_dbutils_module(dbutils_module: Any) -> None:
-    """Inject the dbutils module for remote file operations.
-
-    Args:
-        dbutils_module: The ``pyspark.dbutils`` module.
-    """
+def _set_dbutils_module(dbutils_module: Any) -> None:
+    """Internal: set the dbutils module. Use top-level inject_dbutils() instead."""
     global _dbutils_module
     _dbutils_module = dbutils_module
     logger.debug("Injected dbutils module for DBFS: %s", dbutils_module)
+
+
+inject_dbutils_module = _set_dbutils_module
 
 
 def _get_dbutils() -> Any:

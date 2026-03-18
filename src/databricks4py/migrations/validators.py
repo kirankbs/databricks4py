@@ -7,6 +7,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 from pyspark.sql import SparkSession
+from pyspark.sql.utils import AnalysisException
 
 from databricks4py.io.delta import GeneratedColumn
 from databricks4py.spark_session import active_fallback
@@ -109,7 +110,7 @@ class TableValidator:
         try:
             self._spark.sql(f"DESCRIBE TABLE {self._table_name}")
             return True
-        except Exception:
+        except AnalysisException:
             return False
 
     def _get_actual_columns(self) -> set[str]:
