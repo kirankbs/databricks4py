@@ -5,7 +5,15 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-__all__ = ["copy_from_remote", "inject_dbutils_module", "_set_dbutils_module"]
+__all__ = [
+    "copy_from_remote",
+    "inject_dbutils_module",
+    "ls",
+    "mkdirs",
+    "mv",
+    "rm",
+    "_set_dbutils_module",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -56,3 +64,30 @@ def copy_from_remote(
     dbutils = _get_dbutils()
     logger.info("Copying %s -> %s (recurse=%s)", remote_path, local_path, recurse)
     return dbutils.fs.cp(remote_path, local_path, recurse=recurse)
+
+
+def ls(path: str) -> list:
+    """List files at the given path."""
+    dbutils = _get_dbutils()
+    return dbutils.fs.ls(path)
+
+
+def mv(source: str, dest: str, *, recurse: bool = False) -> None:
+    """Move a file or directory."""
+    dbutils = _get_dbutils()
+    logger.info("Moving %s → %s (recurse=%s)", source, dest, recurse)
+    dbutils.fs.mv(source, dest, recurse)
+
+
+def rm(path: str, *, recurse: bool = False) -> None:
+    """Remove a file or directory."""
+    dbutils = _get_dbutils()
+    logger.info("Removing %s (recurse=%s)", path, recurse)
+    dbutils.fs.rm(path, recurse)
+
+
+def mkdirs(path: str) -> None:
+    """Create a directory (and parents)."""
+    dbutils = _get_dbutils()
+    logger.info("Creating directory %s", path)
+    dbutils.fs.mkdirs(path)

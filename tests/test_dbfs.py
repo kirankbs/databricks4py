@@ -3,7 +3,7 @@
 import pytest
 
 from databricks4py.io import dbfs
-from databricks4py.testing.mocks import MockDBUtilsModule
+from databricks4py.testing.mocks import MockDBUtils, MockDBUtilsModule
 
 
 class TestCopyFromRemote:
@@ -32,3 +32,49 @@ class TestInjectDbutils:
         module = MockDBUtilsModule()
         dbfs.inject_dbutils_module(module)
         assert dbfs._dbutils_module is module
+
+
+class TestDbfsOperations:
+    @pytest.fixture(autouse=True)
+    def _setup(self) -> None:
+        original = dbfs._dbutils_module
+        self.mock = MockDBUtils()
+        dbfs._set_dbutils_module(MockDBUtilsModule(self.mock))
+        yield
+        dbfs._dbutils_module = original
+
+    @pytest.mark.no_pyspark
+    def test_ls(self) -> None:
+        self.mock.fs._ls_results["/mnt/data"] = ["file1", "file2"]
+        result = dbfs.ls("/mnt/data")
+        assert result == ["file1", "file2"]
+
+    @pytest.mark.no_pyspark
+    def test_ls_empty(self) -> None:
+        result = dbfs.ls("/empty")
+        assert result == []
+
+    @pytest.mark.no_pyspark
+    def test_mv(self) -> None:
+        dbfs.mv("/src", "/dst")
+        assert self.mock.fs._moves == [("/src", "/dst", False)]
+
+    @pytest.mark.no_pyspark
+    def test_mv_recurse(self) -> None:
+        dbfs.mv("/src", "/dst", recurse=True)
+        assert self.mock.fs._moves == [("/src", "/dst", True)]
+
+    @pytest.mark.no_pyspark
+    def test_rm(self) -> None:
+        dbfs.rm("/path")
+        assert self.mock.fs._removes == [("/path", False)]
+
+    @pytest.mark.no_pyspark
+    def test_rm_recurse(self) -> None:
+        dbfs.rm("/path", recurse=True)
+        assert self.mock.fs._removes == [("/path", True)]
+
+    @pytest.mark.no_pyspark
+    def test_mkdirs(self) -> None:
+        dbfs.mkdirs("/new/dir")
+        assert self.mock.fs._mkdirs == ["/new/dir"]
