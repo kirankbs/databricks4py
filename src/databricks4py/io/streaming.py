@@ -111,9 +111,7 @@ class StreamingTableReader(ABC):
 
         # Auto-generate checkpoint path when manager is provided
         if checkpoint_location is None and checkpoint_manager is not None:
-            checkpoint_location = checkpoint_manager.path_for(
-                source_table, self.__class__.__name__
-            )
+            checkpoint_location = checkpoint_manager.path_for(source_table, self.__class__.__name__)
         if checkpoint_location is None:
             raise ValueError(
                 "checkpoint_location is required when no checkpoint_manager is provided"

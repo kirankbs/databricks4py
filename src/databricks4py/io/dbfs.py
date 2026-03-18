@@ -33,9 +33,7 @@ inject_dbutils_module = _set_dbutils_module
 def _get_dbutils() -> Any:
     """Get a DBUtils instance from the injected module."""
     if _dbutils_module is None:
-        raise RuntimeError(
-            "dbutils module not injected. Call inject_dbutils_module() first."
-        )
+        raise RuntimeError("dbutils module not injected. Call inject_dbutils_module() first.")
 
     import pyspark.sql
 

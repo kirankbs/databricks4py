@@ -12,9 +12,7 @@ from databricks4py.testing.temp_table import TempDeltaTable
 
 @pytest.mark.integration
 class TestTempDeltaTable:
-    def test_creates_and_drops(
-        self, spark_session_function: pyspark.sql.SparkSession
-    ) -> None:
+    def test_creates_and_drops(self, spark_session_function: pyspark.sql.SparkSession) -> None:
         table_name = "test_temp_creates_drops"
         with TempDeltaTable(
             spark_session_function,
@@ -35,9 +33,7 @@ class TestTempDeltaTable:
         assert t.table_name.startswith("tmp_")
         assert len(t.table_name) == 16  # "tmp_" + 12 hex chars
 
-    def test_custom_table_name(
-        self, spark_session_function: pyspark.sql.SparkSession
-    ) -> None:
+    def test_custom_table_name(self, spark_session_function: pyspark.sql.SparkSession) -> None:
         t = TempDeltaTable(
             spark_session_function,
             table_name="my_custom_table",
@@ -45,9 +41,7 @@ class TestTempDeltaTable:
         )
         assert t.table_name == "my_custom_table"
 
-    def test_returns_delta_table(
-        self, spark_session_function: pyspark.sql.SparkSession
-    ) -> None:
+    def test_returns_delta_table(self, spark_session_function: pyspark.sql.SparkSession) -> None:
         with TempDeltaTable(
             spark_session_function,
             schema={"id": "int", "name": "string"},

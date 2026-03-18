@@ -60,9 +60,7 @@ class TestSchemaDiffIntegration:
         self,
         spark_session_function: pyspark.sql.SparkSession,
     ) -> None:
-        current = StructType(
-            [StructField("id", IntegerType())]
-        )
+        current = StructType([StructField("id", IntegerType())])
         incoming = StructType(
             [
                 StructField("id", IntegerType()),
@@ -86,9 +84,7 @@ class TestSchemaDiffIntegration:
                 StructField("name", StringType()),
             ]
         )
-        incoming = StructType(
-            [StructField("id", IntegerType())]
-        )
+        incoming = StructType([StructField("id", IntegerType())])
         diff = SchemaDiff(current=current, incoming=incoming)
         changes = diff.changes()
         assert len(changes) == 1
@@ -101,12 +97,8 @@ class TestSchemaDiffIntegration:
         self,
         spark_session_function: pyspark.sql.SparkSession,
     ) -> None:
-        current = StructType(
-            [StructField("id", IntegerType())]
-        )
-        incoming = StructType(
-            [StructField("id", LongType())]
-        )
+        current = StructType([StructField("id", IntegerType())])
+        incoming = StructType([StructField("id", LongType())])
         diff = SchemaDiff(current=current, incoming=incoming)
         changes = diff.changes()
         assert len(changes) == 1
@@ -120,12 +112,8 @@ class TestSchemaDiffIntegration:
         self,
         spark_session_function: pyspark.sql.SparkSession,
     ) -> None:
-        current = StructType(
-            [StructField("id", IntegerType(), nullable=True)]
-        )
-        incoming = StructType(
-            [StructField("id", IntegerType(), nullable=False)]
-        )
+        current = StructType([StructField("id", IntegerType(), nullable=True)])
+        incoming = StructType([StructField("id", IntegerType(), nullable=False)])
         diff = SchemaDiff(current=current, incoming=incoming)
         changes = diff.changes()
         assert len(changes) == 1

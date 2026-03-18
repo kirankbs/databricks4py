@@ -72,42 +72,30 @@ class MergeBuilder:
         self._join_condition = condition
         return self
 
-    def when_matched_update(
-        self, columns: list[str] | None = None
-    ) -> MergeBuilder:
+    def when_matched_update(self, columns: list[str] | None = None) -> MergeBuilder:
         """Update matched rows. If columns is None, updates all columns."""
         self._actions.append({"type": "matched_update", "columns": columns})
         return self
 
-    def when_matched_delete(
-        self, condition: str | None = None
-    ) -> MergeBuilder:
+    def when_matched_delete(self, condition: str | None = None) -> MergeBuilder:
         """Delete matched rows, optionally filtered by condition."""
         self._actions.append({"type": "matched_delete", "condition": condition})
         return self
 
-    def when_not_matched_insert(
-        self, columns: list[str] | None = None
-    ) -> MergeBuilder:
+    def when_not_matched_insert(self, columns: list[str] | None = None) -> MergeBuilder:
         """Insert non-matched source rows. If columns is None, inserts all."""
         self._actions.append({"type": "not_matched_insert", "columns": columns})
         return self
 
-    def when_not_matched_by_source_delete(
-        self, condition: str | None = None
-    ) -> MergeBuilder:
+    def when_not_matched_by_source_delete(self, condition: str | None = None) -> MergeBuilder:
         """Delete target rows not present in source."""
-        self._actions.append(
-            {"type": "not_matched_by_source_delete", "condition": condition}
-        )
+        self._actions.append({"type": "not_matched_by_source_delete", "condition": condition})
         return self
 
     def _build_condition(self) -> str:
         if self._join_condition:
             return self._join_condition
-        parts = [
-            f"{_TARGET_ALIAS}.{k} = {_SOURCE_ALIAS}.{k}" for k in self._join_keys
-        ]
+        parts = [f"{_TARGET_ALIAS}.{k} = {_SOURCE_ALIAS}.{k}" for k in self._join_keys]
         return " AND ".join(parts)
 
     def execute(self) -> MergeResult:
@@ -117,9 +105,7 @@ class MergeBuilder:
         target_dt = DeltaTable.forName(self._spark, self._target_table_name)
         condition = self._build_condition()
 
-        merger = target_dt.alias(_TARGET_ALIAS).merge(
-            self._source.alias(_SOURCE_ALIAS), condition
-        )
+        merger = target_dt.alias(_TARGET_ALIAS).merge(self._source.alias(_SOURCE_ALIAS), condition)
 
         for action in self._actions:
             merger = self._apply_action(merger, action)
@@ -137,9 +123,7 @@ class MergeBuilder:
         if action_type == "matched_update":
             columns = action["columns"]
             if columns:
-                update_map = {
-                    col: f"{_SOURCE_ALIAS}.{col}" for col in columns
-                }
+                update_map = {col: f"{_SOURCE_ALIAS}.{col}" for col in columns}
                 return merger.whenMatchedUpdate(set=update_map)
             return merger.whenMatchedUpdateAll()
 
@@ -150,9 +134,7 @@ class MergeBuilder:
         if action_type == "not_matched_insert":
             columns = action["columns"]
             if columns:
-                insert_map = {
-                    col: f"{_SOURCE_ALIAS}.{col}" for col in columns
-                }
+                insert_map = {col: f"{_SOURCE_ALIAS}.{col}" for col in columns}
                 return merger.whenNotMatchedInsert(values=insert_map)
             return merger.whenNotMatchedInsertAll()
 
@@ -166,9 +148,7 @@ class MergeBuilder:
         raise ValueError(msg)
 
     def _read_metrics(self) -> MergeResult:
-        history = self._spark.sql(
-            f"DESCRIBE HISTORY {self._target_table_name} LIMIT 1"
-        )
+        history = self._spark.sql(f"DESCRIBE HISTORY {self._target_table_name} LIMIT 1")
         row = history.collect()[0]
         metrics: dict[str, str] = row["operationMetrics"] or {}
 

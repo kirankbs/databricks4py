@@ -12,10 +12,12 @@ from databricks4py.testing.assertions import assert_frame_equal, assert_schema_e
 @pytest.mark.integration
 class TestAssertFrameEqual:
     def test_equal_frames(self, spark_session: pyspark.sql.SparkSession) -> None:
-        schema = StructType([
-            StructField("id", IntegerType()),
-            StructField("name", StringType()),
-        ])
+        schema = StructType(
+            [
+                StructField("id", IntegerType()),
+                StructField("name", StringType()),
+            ]
+        )
         df1 = spark_session.createDataFrame([(1, "a"), (2, "b")], schema=schema)
         df2 = spark_session.createDataFrame([(1, "a"), (2, "b")], schema=schema)
         assert_frame_equal(df1, df2)
@@ -45,14 +47,18 @@ class TestAssertFrameEqual:
 @pytest.mark.integration
 class TestAssertSchemaEqual:
     def test_equal_schemas(self, spark_session: pyspark.sql.SparkSession) -> None:
-        s1 = StructType([
-            StructField("id", IntegerType()),
-            StructField("name", StringType()),
-        ])
-        s2 = StructType([
-            StructField("id", IntegerType()),
-            StructField("name", StringType()),
-        ])
+        s1 = StructType(
+            [
+                StructField("id", IntegerType()),
+                StructField("name", StringType()),
+            ]
+        )
+        s2 = StructType(
+            [
+                StructField("id", IntegerType()),
+                StructField("name", StringType()),
+            ]
+        )
         assert_schema_equal(s1, s2)
 
     def test_different_types_raises(self, spark_session: pyspark.sql.SparkSession) -> None:

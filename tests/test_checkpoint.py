@@ -26,9 +26,7 @@ class TestCheckpointInfo:
 
     @pytest.mark.no_pyspark
     def test_frozen(self) -> None:
-        info = CheckpointInfo(
-            path="/tmp/ckpt", last_batch_id=None, offsets=None, size_bytes=0
-        )
+        info = CheckpointInfo(path="/tmp/ckpt", last_batch_id=None, offsets=None, size_bytes=0)
         with pytest.raises(FrozenInstanceError, match="cannot assign"):
             info.path = "/other"  # type: ignore[misc]
 

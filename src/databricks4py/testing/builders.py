@@ -82,9 +82,7 @@ class DataFrameBuilder:
         self._rows.extend(rows)
         return self
 
-    def with_sequential(
-        self, column: str, start: int = 1, count: int = 10
-    ) -> DataFrameBuilder:
+    def with_sequential(self, column: str, start: int = 1, count: int = 10) -> DataFrameBuilder:
         """Generate sequential integer rows for a single column.
 
         If rows already exist, this replaces them.
@@ -104,9 +102,7 @@ class DataFrameBuilder:
         if self._schema is None:
             raise ValueError("Schema must be defined before injecting nulls")
 
-        col_idx = next(
-            (i for i, f in enumerate(self._schema.fields) if f.name == column), None
-        )
+        col_idx = next((i for i, f in enumerate(self._schema.fields) if f.name == column), None)
         if col_idx is None:
             raise ValueError(f"Column {column!r} not found in schema")
 

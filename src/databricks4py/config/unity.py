@@ -30,14 +30,10 @@ class UnityConfig(JobConfig):
     def table(self, name: str) -> str:
         parts = name.split(".")
         if len(parts) != 2:
-            raise ValueError(
-                f"Expected 'schema.table' format, got '{name}'"
-            )
+            raise ValueError(f"Expected 'schema.table' format, got '{name}'")
         schema, table_name = parts
         if schema not in self.schemas:
-            raise KeyError(
-                f"Schema '{schema}' not in configured schemas: {sorted(self.schemas)}"
-            )
+            raise KeyError(f"Schema '{schema}' not in configured schemas: {sorted(self.schemas)}")
         return f"{self.catalog}.{schema}.{table_name}"
 
     def __repr__(self) -> str:

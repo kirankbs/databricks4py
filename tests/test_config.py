@@ -117,9 +117,7 @@ class TestUnityConfig:
 
     @pytest.mark.no_pyspark
     def test_secret_scope(self) -> None:
-        cfg = UnityConfig(
-            catalog_prefix="analytics", schemas=["bronze"], secret_scope="my-scope"
-        )
+        cfg = UnityConfig(catalog_prefix="analytics", schemas=["bronze"], secret_scope="my-scope")
         assert cfg.secret_scope == "my-scope"
 
     @pytest.mark.no_pyspark

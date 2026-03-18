@@ -104,9 +104,7 @@ class Unique(Expectation):
 class RowCount(Expectation):
     """Validates that the DataFrame row count falls within bounds."""
 
-    def __init__(
-        self, *, min_count: int | None = None, max_count: int | None = None
-    ) -> None:
+    def __init__(self, *, min_count: int | None = None, max_count: int | None = None) -> None:
         self._min_count = min_count
         self._max_count = max_count
 
@@ -124,9 +122,7 @@ class RowCount(Expectation):
         )
 
     def __repr__(self) -> str:
-        return (
-            f"RowCount(min_count={self._min_count!r}, max_count={self._max_count!r})"
-        )
+        return f"RowCount(min_count={self._min_count!r}, max_count={self._max_count!r})"
 
 
 class MatchesRegex(Expectation):

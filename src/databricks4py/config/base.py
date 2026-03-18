@@ -62,9 +62,7 @@ class JobConfig:
             return self.tables[name]
         except KeyError:
             available = sorted(self.tables.keys())
-            raise KeyError(
-                f"Table '{name}' not configured. Available: {available}"
-            ) from None
+            raise KeyError(f"Table '{name}' not configured. Available: {available}") from None
 
     def secret(self, key: str) -> str:
         if self.secret_scope is None:

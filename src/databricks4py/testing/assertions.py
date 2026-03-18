@@ -44,8 +44,7 @@ def assert_schema_equal(
             )
         if check_nullable and a.nullable != e.nullable:
             raise AssertionError(
-                f"Field {a.name!r}: nullable mismatch — "
-                f"actual={a.nullable}, expected={e.nullable}"
+                f"Field {a.name!r}: nullable mismatch — actual={a.nullable}, expected={e.nullable}"
             )
 
 

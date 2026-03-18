@@ -33,16 +33,13 @@ class TestDataFrameBuilder:
         assert sorted(rows) == [5, 6, 7]
 
     def test_with_schema_struct_type(self, spark_session: pyspark.sql.SparkSession) -> None:
-        schema = StructType([
-            StructField("x", IntegerType()),
-            StructField("y", StringType()),
-        ])
-        df = (
-            DataFrameBuilder(spark_session)
-            .with_schema(schema)
-            .with_rows((1, "a"))
-            .build()
+        schema = StructType(
+            [
+                StructField("x", IntegerType()),
+                StructField("y", StringType()),
+            ]
         )
+        df = DataFrameBuilder(spark_session).with_schema(schema).with_rows((1, "a")).build()
         assert df.schema == schema
         assert df.count() == 1
 

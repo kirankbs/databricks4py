@@ -41,9 +41,7 @@ class QualityGate:
         quarantine_handler: Callable[[DataFrame], None] | None = None,
     ) -> None:
         if on_fail == "quarantine" and quarantine_handler is None:
-            raise ValueError(
-                "quarantine_handler is required when on_fail='quarantine'"
-            )
+            raise ValueError("quarantine_handler is required when on_fail='quarantine'")
         self._expectations = expectations
         self._on_fail = on_fail
         self._quarantine_handler = quarantine_handler
@@ -88,7 +86,5 @@ class QualityGate:
             return clean_rows
 
         # no row-level conditions available — quarantine nothing
-        logger.warning(
-            "Quarantine requested but no row-level failing conditions available"
-        )
+        logger.warning("Quarantine requested but no row-level failing conditions available")
         return df

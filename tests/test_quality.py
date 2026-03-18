@@ -24,9 +24,7 @@ class TestExpectationResult:
         assert r.failing_rows == 0
 
     def test_failed(self) -> None:
-        r = ExpectationResult(
-            expectation="not_null", passed=False, total_rows=100, failing_rows=5
-        )
+        r = ExpectationResult(expectation="not_null", passed=False, total_rows=100, failing_rows=5)
         assert r.passed is False
         assert r.failing_rows == 5
 
