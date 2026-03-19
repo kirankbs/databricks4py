@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import os
 import shutil
-from collections.abc import Generator
+from collections.abc import Callable, Generator
+from typing import Any
 
 import pyspark.sql
 import pytest
+
+from databricks4py.testing.builders import DataFrameBuilder
+from databricks4py.testing.temp_table import TempDeltaTable
 
 
 @pytest.fixture(scope="session")
@@ -77,3 +81,44 @@ def clear_env() -> Generator[None]:
     yield
     os.environ.clear()
     os.environ.update(original)
+
+
+@pytest.fixture()
+def df_builder(spark_session: pyspark.sql.SparkSession) -> DataFrameBuilder:
+    """Return a DataFrameBuilder bound to the session-scoped SparkSession."""
+    return DataFrameBuilder(spark_session)
+
+
+@pytest.fixture()
+def temp_delta(
+    spark_session_function: pyspark.sql.SparkSession,
+) -> Generator[Callable[..., TempDeltaTable]]:
+    """Factory fixture that creates TempDeltaTables and cleans up on exit.
+
+    Usage::
+
+        def test_something(temp_delta):
+            with temp_delta(schema={"id": "int"}, data=[(1,)]) as table:
+                assert table.dataframe().count() == 1
+    """
+    tables: list[TempDeltaTable] = []
+
+    def _factory(
+        *,
+        table_name: str | None = None,
+        schema: dict[str, str] | None = None,
+        data: list[tuple[Any, ...]] | None = None,
+    ) -> TempDeltaTable:
+        t = TempDeltaTable(
+            spark_session_function,
+            table_name=table_name,
+            schema=schema,
+            data=data,
+        )
+        tables.append(t)
+        return t
+
+    yield _factory
+
+    for t in tables:
+        spark_session_function.sql(f"DROP TABLE IF EXISTS {t.table_name}")

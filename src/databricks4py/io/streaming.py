@@ -3,14 +3,20 @@
 from __future__ import annotations
 
 import logging
+import time
 from abc import ABC, abstractmethod
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.streaming import StreamingQuery
 
 from databricks4py.filters.base import Filter
 from databricks4py.spark_session import active_fallback
+
+if TYPE_CHECKING:
+    from databricks4py.io.checkpoint import CheckpointManager
+    from databricks4py.metrics.base import MetricsSink
 
 __all__ = [
     "StreamingTableReader",
@@ -62,30 +68,55 @@ class StreamingTableReader(ABC):
 
     Args:
         source_table: Table name or path to read as a stream.
-        trigger: Trigger configuration.
-        checkpoint_location: Path for streaming checkpoints.
+        trigger: Trigger configuration, a raw dict, or None for the default.
+        checkpoint_location: Path for streaming checkpoints. Auto-generated
+            when a ``checkpoint_manager`` is provided and this is None.
         source_format: Source format (default ``"delta"``).
         filter: Optional Filter to apply before processing each batch.
         skip_empty_batches: Skip batches with 0 rows (default True).
         read_options: Additional read options as key-value pairs.
+        checkpoint_manager: Optional CheckpointManager for auto-generating
+            checkpoint paths.
+        metrics_sink: Optional MetricsSink for emitting batch metrics.
         spark: Optional SparkSession.
     """
+
+    _DEFAULT_TRIGGER: dict[str, str] = {"processingTime": "10 seconds"}
 
     def __init__(
         self,
         source_table: str,
-        trigger: StreamingTriggerOptions,
-        checkpoint_location: str,
+        trigger: StreamingTriggerOptions | dict | None = None,
+        checkpoint_location: str | None = None,
         *,
         source_format: str = "delta",
         filter: Filter | None = None,
         skip_empty_batches: bool = True,
         read_options: dict[str, str] | None = None,
+        checkpoint_manager: CheckpointManager | None = None,
+        metrics_sink: MetricsSink | None = None,
         spark: SparkSession | None = None,
     ) -> None:
         self._spark = active_fallback(spark)
         self._source_table = source_table
-        self._trigger = trigger
+        self._metrics_sink = metrics_sink
+
+        # Resolve trigger to a plain dict
+        if trigger is None:
+            self._trigger_dict = self._DEFAULT_TRIGGER
+        elif isinstance(trigger, StreamingTriggerOptions):
+            self._trigger_dict = trigger.value
+        else:
+            self._trigger_dict = trigger
+
+        # Auto-generate checkpoint path when manager is provided
+        if checkpoint_location is None and checkpoint_manager is not None:
+            checkpoint_location = checkpoint_manager.path_for(source_table, self.__class__.__name__)
+        if checkpoint_location is None:
+            raise ValueError(
+                "checkpoint_location is required when no checkpoint_manager is provided"
+            )
+
         self._checkpoint_location = checkpoint_location
         self._source_format = source_format
         self._filter = filter
@@ -103,7 +134,7 @@ class StreamingTableReader(ABC):
         ...
 
     def _foreach_batch_wrapper(self, df: DataFrame, batch_id: int) -> None:
-        """Internal wrapper handling empty batch detection and filtering."""
+        """Internal wrapper handling empty batch detection, filtering, and metrics."""
         if self._skip_empty_batches and df.isEmpty():
             logger.debug("Skipping empty batch %d", batch_id)
             return
@@ -114,8 +145,29 @@ class StreamingTableReader(ABC):
                 logger.debug("Skipping batch %d (empty after filtering)", batch_id)
                 return
 
-        logger.info("Processing batch %d", batch_id)
+        count = df.count()
+        logger.info("Processing batch %d (%d rows)", batch_id, count)
+
+        start = time.monotonic()
         self.process_batch(df, batch_id)
+        duration_ms = (time.monotonic() - start) * 1000
+
+        if self._metrics_sink is not None:
+            from datetime import datetime
+
+            from databricks4py.metrics.base import MetricEvent
+
+            self._metrics_sink.emit(
+                MetricEvent(
+                    job_name=self.__class__.__name__,
+                    event_type="batch_complete",
+                    timestamp=datetime.now(),
+                    duration_ms=duration_ms,
+                    row_count=count,
+                    batch_id=batch_id,
+                    table_name=self._source_table,
+                )
+            )
 
     def _build_read_stream(self) -> DataFrame:
         """Build the readStream DataFrame."""
@@ -137,7 +189,7 @@ class StreamingTableReader(ABC):
 
         query = (
             stream_df.writeStream.foreachBatch(self._foreach_batch_wrapper)
-            .trigger(**self._trigger.value)
+            .trigger(**self._trigger_dict)
             .option("checkpointLocation", self._checkpoint_location)
             .start()
         )
@@ -145,6 +197,6 @@ class StreamingTableReader(ABC):
         logger.info(
             "Started streaming query from %s with trigger %s",
             self._source_table,
-            self._trigger.name,
+            self._trigger_dict,
         )
         return query

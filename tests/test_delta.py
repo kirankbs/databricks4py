@@ -168,12 +168,8 @@ class TestDeltaTableAppender:
             spark=spark_session_function,
         )
 
-        df1 = spark_session_function.createDataFrame(
-            [{"id": 1, "name": "a"}], schema=SIMPLE_SCHEMA
-        )
-        df2 = spark_session_function.createDataFrame(
-            [{"id": 2, "name": "b"}], schema=SIMPLE_SCHEMA
-        )
+        df1 = spark_session_function.createDataFrame([{"id": 1, "name": "a"}], schema=SIMPLE_SCHEMA)
+        df2 = spark_session_function.createDataFrame([{"id": 2, "name": "b"}], schema=SIMPLE_SCHEMA)
 
         appender.append(df1)
         appender.append(df2)
@@ -199,9 +195,7 @@ class TestDeltaTableOverwriter:
             [{"id": 1, "name": "a"}, {"id": 2, "name": "b"}],
             schema=SIMPLE_SCHEMA,
         )
-        df2 = spark_session_function.createDataFrame(
-            [{"id": 3, "name": "c"}], schema=SIMPLE_SCHEMA
-        )
+        df2 = spark_session_function.createDataFrame([{"id": 3, "name": "c"}], schema=SIMPLE_SCHEMA)
 
         overwriter.overwrite(df1)
         assert overwriter.dataframe().count() == 2
@@ -246,3 +240,99 @@ class TestOptimizeVacuum:
             "spark.databricks.delta.retentionDurationCheck.enabled", "false"
         )
         vacuum_table("default.test_vac", retention_hours=0, spark=spark_session_function)
+
+
+@pytest.mark.integration
+class TestDeltaTableDictSchema:
+    def test_dict_schema(
+        self,
+        spark_session_function: pyspark.sql.SparkSession,
+        tmp_path,
+    ) -> None:
+        table = DeltaTable(
+            "default.test_dict_schema",
+            schema={"id": "INT", "name": "STRING"},
+            location=str(tmp_path / "dict_schema"),
+            spark=spark_session_function,
+        )
+        df = spark_session_function.createDataFrame([(1, "alice")], SIMPLE_SCHEMA)
+        table.write(df)
+        assert table.dataframe().count() == 1
+
+
+@pytest.mark.integration
+class TestDeltaTableMerge:
+    def test_merge_returns_builder(
+        self,
+        spark_session_function: pyspark.sql.SparkSession,
+        tmp_path,
+    ) -> None:
+        from databricks4py.io.merge import MergeBuilder
+
+        table = DeltaTable(
+            "default.test_merge_dt",
+            schema=SIMPLE_SCHEMA,
+            location=str(tmp_path / "merge_dt"),
+            spark=spark_session_function,
+        )
+        df = spark_session_function.createDataFrame([(1, "alice")], SIMPLE_SCHEMA)
+        table.write(df, mode="overwrite")
+        builder = table.merge(df)
+        assert isinstance(builder, MergeBuilder)
+
+    def test_upsert(
+        self,
+        spark_session_function: pyspark.sql.SparkSession,
+        tmp_path,
+    ) -> None:
+        table = DeltaTable(
+            "default.test_upsert_dt",
+            schema=SIMPLE_SCHEMA,
+            location=str(tmp_path / "upsert_dt"),
+            spark=spark_session_function,
+        )
+        initial = spark_session_function.createDataFrame([(1, "alice"), (2, "bob")], SIMPLE_SCHEMA)
+        table.write(initial, mode="overwrite")
+        incoming = spark_session_function.createDataFrame(
+            [(2, "robert"), (3, "charlie")], SIMPLE_SCHEMA
+        )
+        result = table.upsert(incoming, keys=["id"])
+        assert result.rows_updated == 1
+        assert result.rows_inserted == 1
+
+    def test_schema_check_blocks_breaking(
+        self,
+        spark_session_function: pyspark.sql.SparkSession,
+        tmp_path,
+    ) -> None:
+        from databricks4py.migrations.schema_diff import SchemaEvolutionError
+
+        table = DeltaTable(
+            "default.test_schema_block",
+            schema=SIMPLE_SCHEMA,
+            location=str(tmp_path / "schema_block"),
+            spark=spark_session_function,
+        )
+        df = spark_session_function.createDataFrame([(1, "alice")], SIMPLE_SCHEMA)
+        table.write(df, mode="overwrite")
+        narrow_schema = StructType([StructField("id", IntegerType())])
+        narrow = spark_session_function.createDataFrame([(2,)], narrow_schema)
+        with pytest.raises(SchemaEvolutionError, match="Breaking"):
+            table.write(narrow, schema_check=True)
+
+    def test_schema_check_disabled(
+        self,
+        spark_session_function: pyspark.sql.SparkSession,
+        tmp_path,
+    ) -> None:
+        table = DeltaTable(
+            "default.test_schema_skip",
+            schema=SIMPLE_SCHEMA,
+            location=str(tmp_path / "schema_skip"),
+            spark=spark_session_function,
+        )
+        df = spark_session_function.createDataFrame([(1, "alice")], SIMPLE_SCHEMA)
+        table.write(df, mode="overwrite")
+        narrow_schema = StructType([StructField("id", IntegerType())])
+        narrow = spark_session_function.createDataFrame([(2,)], narrow_schema)
+        table.write(narrow, mode="overwrite", schema_check=False)

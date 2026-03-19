@@ -38,16 +38,34 @@ class _MockFS:
 
     def __init__(self) -> None:
         self._copies: list[tuple[str, str, bool]] = []
-        self._files: dict[str, list[str]] = {}
+        self._moves: list[tuple[str, str, bool]] = []
+        self._removes: list[tuple[str, bool]] = []
+        self._mkdirs: list[str] = []
+        self._ls_results: dict[str, list[Any]] = {}
 
     def cp(self, source: str, dest: str, recurse: bool = False) -> bool:
         """Record a copy operation."""
         self._copies.append((source, dest, recurse))
         return True
 
+    def mv(self, source: str, dest: str, recurse: bool = False) -> bool:
+        """Record a move operation."""
+        self._moves.append((source, dest, recurse))
+        return True
+
+    def rm(self, path: str, recurse: bool = False) -> bool:
+        """Record a remove operation."""
+        self._removes.append((path, recurse))
+        return True
+
+    def mkdirs(self, path: str) -> bool:
+        """Record a mkdirs operation."""
+        self._mkdirs.append(path)
+        return True
+
     def ls(self, path: str) -> list[Any]:
         """List files at path."""
-        return self._files.get(path, [])
+        return self._ls_results.get(path, [])
 
 
 class MockDBUtils:
