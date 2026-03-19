@@ -33,7 +33,7 @@ class TestActiveFallback:
     @pytest.mark.no_pyspark
     def test_raises_when_none_and_no_active(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(pyspark.sql.SparkSession, "getActiveSession", lambda: None)
-        with pytest.raises(RuntimeError):
+        with pytest.raises(RuntimeError, match="No active SparkSession"):
             active_fallback(None)
 
 

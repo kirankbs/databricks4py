@@ -42,7 +42,7 @@ class Workflow(ABC):
                 df = self.spark.read.table("source")
                 df.write.format("delta").saveAsTable("target")
 
-        # As a CLI entry point:
+        # As a CLI entry point (pyspark.dbutils only on Databricks Runtime):
         def main():
             import pyspark.dbutils
             MyETL(dbutils=pyspark.dbutils).execute()
@@ -50,6 +50,7 @@ class Workflow(ABC):
     Args:
         spark: Optional SparkSession. Defaults to active session.
         dbutils: Optional dbutils module for secret/file operations.
+            Only available on Databricks Runtime (``pyspark.dbutils``).
         log_level: Logging level (default INFO).
         config: Optional JobConfig for table lookups and spark configs.
         metrics: Optional MetricsSink for lifecycle and custom metrics.
@@ -60,7 +61,7 @@ class Workflow(ABC):
         self,
         *,
         spark: SparkSession | None = None,
-        dbutils: Any | None = None,
+        dbutils: Any = None,
         log_level: int = logging.INFO,
         config: JobConfig | None = None,
         metrics: MetricsSink | None = None,
@@ -78,8 +79,8 @@ class Workflow(ABC):
             try:
                 self._inject_dbutils(dbutils)
                 self._dbutils = dbutils
-            except Exception:
-                logger.info("dbutils injection failed (running outside Databricks)")
+            except (ImportError, AttributeError, TypeError) as exc:
+                logger.warning("dbutils injection failed: %s (running outside Databricks?)", exc)
 
     @staticmethod
     def _inject_dbutils(dbutils_module: Any) -> None:
@@ -99,14 +100,14 @@ class Workflow(ABC):
         return self._spark
 
     @property
-    def dbutils(self) -> Any | None:
+    def dbutils(self) -> Any:
         """The dbutils module, or None if not in Databricks."""
         return self._dbutils
 
     @property
     def execution_time(self) -> datetime:
-        """The logical execution time (set by run_at_time, or now)."""
-        return self._execution_time or datetime.now()
+        """The logical execution time (set by run_at_time, or defaults to init time)."""
+        return self._execution_time
 
     @property
     def config(self) -> JobConfig | None:

@@ -1,9 +1,19 @@
-"""Example: Streaming job using databricks4py.
+"""Databricks pattern: Structured streaming micro-batch job.
 
-Demonstrates:
-- Subclassing StreamingTableReader for micro-batch processing
-- StreamingTriggerOptions for trigger configuration
-- DeltaTableAppender as output sink
+Shows StreamingTableReader with foreachBatch processing, trigger options,
+row filtering, and DeltaTableAppender as the output sink.
+
+Note: Designed to run on Databricks Runtime. For local examples, see quickstart.py.
+      pyspark.dbutils is only available on Databricks Runtime.
+      Streaming requires a source that supports readStream (e.g. Delta table, Kafka).
+
+Available triggers:
+    StreamingTriggerOptions.PROCESSING_TIME_10S
+    StreamingTriggerOptions.PROCESSING_TIME_30S
+    StreamingTriggerOptions.PROCESSING_TIME_1M
+    StreamingTriggerOptions.PROCESSING_TIME_5M
+    StreamingTriggerOptions.PROCESSING_TIME_10M
+    StreamingTriggerOptions.AVAILABLE_NOW
 """
 
 from pyspark.sql import DataFrame
@@ -30,7 +40,7 @@ class EventStreamProcessor(StreamingTableReader):
             source_table="bronze.raw_stream",
             trigger=trigger,
             checkpoint_location=checkpoint_location,
-            filter=DropDuplicates(subset=["event_id"]),
+            row_filter=DropDuplicates(subset=["event_id"]),
             spark=spark,
         )
         self._output = DeltaTableAppender(

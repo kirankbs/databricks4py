@@ -13,9 +13,19 @@ import pytest
 from databricks4py.testing.builders import DataFrameBuilder
 from databricks4py.testing.temp_table import TempDeltaTable
 
+__all__ = [
+    "clear_env",
+    "df_builder",
+    "spark_session",
+    "spark_session_function",
+    "temp_delta",
+]
+
 
 @pytest.fixture(scope="session")
-def spark_session(tmp_path_factory: pytest.TempPathFactory) -> Generator[pyspark.sql.SparkSession]:
+def spark_session(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> Generator[pyspark.sql.SparkSession, None, None]:
     """Session-scoped SparkSession with Delta Lake support.
 
     Creates a single SparkSession for the entire test session to avoid
@@ -50,7 +60,7 @@ def spark_session(tmp_path_factory: pytest.TempPathFactory) -> Generator[pyspark
 @pytest.fixture()
 def spark_session_function(
     spark_session: pyspark.sql.SparkSession,
-) -> Generator[pyspark.sql.SparkSession]:
+) -> Generator[pyspark.sql.SparkSession, None, None]:
     """Function-scoped SparkSession that cleans up between tests.
 
     Reuses the session-scoped SparkSession but clears the catalog
@@ -75,7 +85,7 @@ def spark_session_function(
 
 
 @pytest.fixture(autouse=True)
-def clear_env() -> Generator[None]:
+def clear_env() -> Generator[None, None, None]:
     """Auto-use fixture that restores environment variables after each test."""
     original = os.environ.copy()
     yield

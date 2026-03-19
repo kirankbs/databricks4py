@@ -72,7 +72,7 @@ class StreamingTableReader(ABC):
         checkpoint_location: Path for streaming checkpoints. Auto-generated
             when a ``checkpoint_manager`` is provided and this is None.
         source_format: Source format (default ``"delta"``).
-        filter: Optional Filter to apply before processing each batch.
+        row_filter: Optional Filter to apply before processing each batch.
         skip_empty_batches: Skip batches with 0 rows (default True).
         read_options: Additional read options as key-value pairs.
         checkpoint_manager: Optional CheckpointManager for auto-generating
@@ -90,7 +90,7 @@ class StreamingTableReader(ABC):
         checkpoint_location: str | None = None,
         *,
         source_format: str = "delta",
-        filter: Filter | None = None,
+        row_filter: Filter | None = None,
         skip_empty_batches: bool = True,
         read_options: dict[str, str] | None = None,
         checkpoint_manager: CheckpointManager | None = None,
@@ -119,7 +119,7 @@ class StreamingTableReader(ABC):
 
         self._checkpoint_location = checkpoint_location
         self._source_format = source_format
-        self._filter = filter
+        self._filter = row_filter
         self._skip_empty_batches = skip_empty_batches
         self._read_options = read_options or {}
 

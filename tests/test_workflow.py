@@ -67,5 +67,5 @@ class TestWorkflow:
 
     def test_execution_time_default(self, spark_session: pyspark.sql.SparkSession) -> None:
         wf = _TestWorkflow(spark=spark_session)
-        # Before run_at_time is called, execution_time should return now
-        assert isinstance(wf.execution_time, datetime)
+        # Before run_at_time is called, execution_time is None in v0.2
+        assert wf.execution_time is None

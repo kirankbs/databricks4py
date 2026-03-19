@@ -106,6 +106,8 @@ class TableValidator:
 
     def _table_exists(self) -> bool:
         """Check if the table exists in the catalog."""
+        from pyspark.errors import AnalysisException
+
         try:
             self._spark.sql(f"DESCRIBE TABLE {self._table_name}")
             return True
@@ -159,6 +161,9 @@ class TableValidator:
             missing = set(self._expected_columns) - actual
             if missing:
                 errors.append(f"Missing required columns: {sorted(missing)}")
+            extra = actual - set(self._expected_columns)
+            if extra:
+                warnings.append(f"Unexpected extra columns: {sorted(extra)}")
 
         if self._expected_partition_columns:
             actual_partitions = self._get_actual_partitions()

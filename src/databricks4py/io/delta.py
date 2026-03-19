@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Any
 
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.types import StructType
-from pyspark.sql.utils import AnalysisException
 
 from databricks4py.spark_session import active_fallback
 
@@ -127,6 +126,7 @@ class DeltaTable:
 
     def _table_exists(self) -> bool:
         from delta.tables import DeltaTable as _DeltaTable
+        from pyspark.errors import AnalysisException
 
         try:
             if self._location:

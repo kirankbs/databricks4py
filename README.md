@@ -22,11 +22,11 @@ A collection of reusable abstractions for building PySpark applications on Datab
 pip install databricks4py
 ```
 
-With pydantic support for configuration management:
+### Prerequisites
 
-```bash
-pip install "databricks4py[pydantic]"
-```
+- **Python** >= 3.10
+- **Java 17+** — required by PySpark for running Spark locally and in tests
+- **pyspark.dbutils** — only available on [Databricks Runtime](https://docs.databricks.com/dev-tools/databricks-utils.html); not needed for local development
 
 ## Quick Start
 
@@ -48,16 +48,15 @@ class MyETL(Workflow):
 
 # Entry point for Databricks job
 def main():
-    import pyspark.dbutils
+    import pyspark.dbutils  # only on Databricks Runtime
     MyETL(dbutils=pyspark.dbutils).execute()
 ```
 
 ### DeltaTable
 
 ```python
-from databricks4py.io import DeltaTable, DeltaTableAppender, GeneratedColumn
+from databricks4py.io import DeltaTable, GeneratedColumn
 
-# Create a table with schema, partitions, and generated columns
 table = DeltaTable(
     table_name="catalog.schema.events",
     schema=events_schema,
@@ -72,6 +71,7 @@ df = table.dataframe()          # Read
 table.write(df, mode="append")  # Write
 table.detail()                  # Metadata
 table.partition_columns()       # ["event_date"]
+table.size_in_bytes()           # Physical size
 ```
 
 ### Filter Pipeline
@@ -130,6 +130,30 @@ def test_my_etl(spark_session_function):
     assert df.count() == 1
 ```
 
+## Examples
+
+The `docs/examples/` directory contains runnable examples:
+
+| File | Runs locally? | Description |
+|------|:---:|-------------|
+| `quickstart.py` | Yes | All core interfaces in one script |
+| `delta_tables.py` | Yes | DeltaTable, Appender, Overwriter, optimize, vacuum, replace_data |
+| `filters_and_pipelines.py` | Yes | Filter, FilterPipeline, custom filters |
+| `catalog_and_logging.py` | Yes (no Java) | CatalogSchema, configure_logging |
+| `testing_guide.py` | Yes (no Java) | MockDBUtils, fixtures, test patterns |
+| `simple_etl.py` | Databricks | Workflow-based ETL job |
+| `streaming_job.py` | Databricks | StreamingTableReader micro-batch job |
+| `migration_check.py` | Databricks | Two-stage migration with validation |
+
+```bash
+# Run locally (requires Java 17+)
+python docs/examples/quickstart.py
+
+# No Java needed
+python docs/examples/catalog_and_logging.py
+python docs/examples/testing_guide.py
+```
+
 ## Compatibility
 
 | PySpark | delta-spark | Python |
@@ -145,13 +169,16 @@ git clone https://github.com/kirankbs/databricks4py.git
 cd databricks4py
 pip install -e ".[dev]"
 
-# Run all tests
-pytest -v
+# Lint
+ruff check src/ tests/ docs/
+ruff format --check src/ tests/ docs/
+
+# Run all tests (requires Java 17+)
+pytest -v --timeout=120
 
 # Run by category
-pytest -m no_pyspark   # Fast, no Spark
-pytest -m unit         # Unit tests
-pytest -m integration  # Integration tests (requires Java)
+pytest -m no_pyspark --timeout=30          # Fast, no Spark/Java
+pytest -m "integration or unit" --timeout=120  # Requires Java 17+
 ```
 
 ## License

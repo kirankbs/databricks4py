@@ -39,6 +39,10 @@ spark-warehouse/
 .DS_Store
 Thumbs.db
 
+# Claude
+.claude/
+CLAUDE.md
+
 # Environment
 .env
 .env.local
