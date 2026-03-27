@@ -357,8 +357,10 @@ class DeltaTable:
         )
 
         history = self._spark.sql(f"DESCRIBE HISTORY {self._table_name} LIMIT 1")
-        row = history.collect()[0]
-        metrics: dict[str, str] = row["operationMetrics"] or {}
+        rows = history.collect()
+        if not rows:
+            return
+        metrics: dict[str, str] = rows[0]["operationMetrics"] or {}
 
         result = _MergeResult(
             rows_inserted=int(metrics.get("numTargetRowsInserted", 0)),

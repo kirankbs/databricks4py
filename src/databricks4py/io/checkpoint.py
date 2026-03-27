@@ -8,6 +8,7 @@ import os
 import re
 import shutil
 from dataclasses import dataclass
+from typing import Any
 
 from pyspark.sql import SparkSession
 
@@ -25,7 +26,7 @@ class CheckpointInfo:
 
     path: str
     last_batch_id: int | None
-    offsets: dict | None
+    offsets: dict[str, Any] | None
     size_bytes: int
 
 
