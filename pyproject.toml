@@ -12,6 +12,7 @@ requires-python = ">=3.10"
 authors = [
     {name = "kirankbs"}
 ]
+keywords = ["spark", "pyspark", "delta-lake", "databricks", "etl", "data-engineering"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -22,6 +23,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Libraries",
     "Topic :: Database",
+    "Operating System :: OS Independent",
 ]
 dependencies = [
     "pyspark>=3.4",
@@ -39,6 +41,7 @@ dev = [
 [project.urls]
 Homepage = "https://github.com/kirankbs/databricks4py"
 Repository = "https://github.com/kirankbs/databricks4py"
+Changelog = "https://github.com/kirankbs/databricks4py/blob/main/CHANGELOG.md"
 Issues = "https://github.com/kirankbs/databricks4py/issues"
 
 [tool.setuptools.packages.find]
@@ -64,3 +67,7 @@ python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = ["B101"]  # allow assert in production code (used for preconditions)
