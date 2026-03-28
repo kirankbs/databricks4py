@@ -62,16 +62,12 @@ class TestDeltaTableHistory:
     def test_history_calls_describe_history(self) -> None:
         table = _mock_delta_table("db.schema.orders")
         table.history()
-        table._spark.sql.assert_called_once_with(
-            "DESCRIBE HISTORY db.schema.orders LIMIT 20"
-        )
+        table._spark.sql.assert_called_once_with("DESCRIBE HISTORY db.schema.orders LIMIT 20")
 
     def test_history_custom_limit(self) -> None:
         table = _mock_delta_table("db.schema.orders")
         table.history(limit=5)
-        table._spark.sql.assert_called_once_with(
-            "DESCRIBE HISTORY db.schema.orders LIMIT 5"
-        )
+        table._spark.sql.assert_called_once_with("DESCRIBE HISTORY db.schema.orders LIMIT 5")
 
     def test_history_returns_dataframe(self) -> None:
         table = _mock_delta_table()
@@ -100,9 +96,7 @@ class TestDeltaTableRestore:
     def test_restore_version_zero(self) -> None:
         table = _mock_delta_table("tbl")
         table.restore(version=0)
-        table._spark.sql.assert_called_once_with(
-            "RESTORE TABLE tbl TO VERSION AS OF 0"
-        )
+        table._spark.sql.assert_called_once_with("RESTORE TABLE tbl TO VERSION AS OF 0")
 
 
 @pytest.mark.no_pyspark

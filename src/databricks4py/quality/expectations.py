@@ -247,9 +247,7 @@ class FreshnessExpectation(Expectation):
                 failing_rows=0,
             )
 
-        max_ts_utc = (
-            max_ts.replace(tzinfo=timezone.utc) if max_ts.tzinfo is None else max_ts
-        )
+        max_ts_utc = max_ts.replace(tzinfo=timezone.utc) if max_ts.tzinfo is None else max_ts
         passed = max_ts_utc >= cutoff
 
         # Use the same cutoff computed above so row-count and table-level verdict are consistent

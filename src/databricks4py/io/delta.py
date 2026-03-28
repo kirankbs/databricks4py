@@ -288,9 +288,7 @@ class DeltaTable:
             DataFrame summarising the restore operation.
         """
         logger.info("Restoring %s to version %d", self._table_name, version)
-        return self._spark.sql(
-            f"RESTORE TABLE {self._table_name} TO VERSION AS OF {version}"
-        )
+        return self._spark.sql(f"RESTORE TABLE {self._table_name} TO VERSION AS OF {version}")
 
     def restore_to_timestamp(self, timestamp: datetime) -> DataFrame:
         """Restore this table to the state at a given timestamp.
@@ -306,9 +304,7 @@ class DeltaTable:
         """
         ts_str = timestamp.strftime("%Y-%m-%d %H:%M:%S")
         logger.info("Restoring %s to timestamp %s", self._table_name, ts_str)
-        return self._spark.sql(
-            f"RESTORE TABLE {self._table_name} TO TIMESTAMP AS OF '{ts_str}'"
-        )
+        return self._spark.sql(f"RESTORE TABLE {self._table_name} TO TIMESTAMP AS OF '{ts_str}'")
 
     def merge(
         self,
