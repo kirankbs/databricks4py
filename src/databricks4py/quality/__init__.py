@@ -3,6 +3,7 @@
 from databricks4py.quality.base import Expectation, ExpectationResult, QualityReport
 from databricks4py.quality.expectations import (
     ColumnExists,
+    FreshnessExpectation,
     InRange,
     MatchesRegex,
     NotNull,
@@ -15,6 +16,7 @@ __all__ = [
     "ColumnExists",
     "Expectation",
     "ExpectationResult",
+    "FreshnessExpectation",
     "InRange",
     "MatchesRegex",
     "NotNull",

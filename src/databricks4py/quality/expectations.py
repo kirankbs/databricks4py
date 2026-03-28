@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from functools import reduce
 from typing import TYPE_CHECKING
 
@@ -10,7 +11,15 @@ from databricks4py.quality.base import Expectation, ExpectationResult
 if TYPE_CHECKING:
     from pyspark.sql import Column, DataFrame
 
-__all__ = ["ColumnExists", "InRange", "MatchesRegex", "NotNull", "RowCount", "Unique"]
+__all__ = [
+    "ColumnExists",
+    "FreshnessExpectation",
+    "InRange",
+    "MatchesRegex",
+    "NotNull",
+    "RowCount",
+    "Unique",
+]
 
 
 class NotNull(Expectation):
@@ -182,3 +191,85 @@ class ColumnExists(Expectation):
         if self._dtype:
             return f"ColumnExists({cols}, dtype={self._dtype!r})"
         return f"ColumnExists({cols})"
+
+
+class FreshnessExpectation(Expectation):
+    """Validates that a timestamp column contains sufficiently recent data.
+
+    The table passes when ``max(column) >= now - max_age``. The failing condition
+    identifies individual rows older than the cutoff, which is useful for quarantine
+    routing via :class:`~databricks4py.quality.gate.QualityGate`.
+
+    Args:
+        column: Timestamp column to check.
+        max_age: Maximum allowed age of the most-recent row. A ``timedelta(hours=1)``
+            means the newest row must be within the last hour.
+
+    Example::
+
+        from datetime import timedelta
+        from databricks4py.quality.expectations import FreshnessExpectation
+
+        expectation = FreshnessExpectation("event_time", max_age=timedelta(hours=6))
+        result = expectation.validate(df)
+        if not result.passed:
+            print(result)
+    """
+
+    def __init__(self, column: str, max_age: timedelta) -> None:
+        self._column = column
+        self._max_age = max_age
+
+    def validate(self, df: DataFrame) -> ExpectationResult:
+        from datetime import datetime, timezone
+
+        from pyspark.sql import functions as F
+
+        total = df.count()
+        if total == 0:
+            return ExpectationResult(
+                expectation=repr(self),
+                passed=False,
+                total_rows=0,
+                failing_rows=0,
+            )
+
+        cutoff = datetime.now(tz=timezone.utc) - self._max_age
+
+        max_row = df.agg(F.max(F.col(self._column)).alias("max_ts")).first()
+        max_ts = max_row["max_ts"] if max_row else None
+
+        if max_ts is None:
+            return ExpectationResult(
+                expectation=repr(self),
+                passed=False,
+                total_rows=total,
+                failing_rows=0,
+            )
+
+        max_ts_utc = (
+            max_ts.replace(tzinfo=timezone.utc) if max_ts.tzinfo is None else max_ts
+        )
+        passed = max_ts_utc >= cutoff
+
+        # Use the same cutoff computed above so row-count and table-level verdict are consistent
+        stale_condition = F.col(self._column) < F.lit(cutoff)
+        failing = df.where(stale_condition).count()
+
+        return ExpectationResult(
+            expectation=repr(self),
+            passed=passed,
+            total_rows=total,
+            failing_rows=failing,
+        )
+
+    def failing_condition(self) -> Column | None:
+        from datetime import datetime, timezone
+
+        from pyspark.sql import functions as F
+
+        cutoff = datetime.now(tz=timezone.utc) - self._max_age
+        return F.col(self._column) < F.lit(cutoff)
+
+    def __repr__(self) -> str:
+        return f"FreshnessExpectation({self._column!r}, max_age={self._max_age!r})"
