@@ -19,6 +19,7 @@ Example::
 
 from __future__ import annotations
 
+import json as _json
 import logging
 import time
 from dataclasses import dataclass, field
@@ -26,7 +27,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from databricks4py.observability._utils import parse_duration_ms as _parse_batch_duration
+from databricks4py.observability._utils import parse_duration_ms
 
 if TYPE_CHECKING:
     from pyspark.sql.streaming import StreamingQuery
@@ -128,8 +129,8 @@ class StreamingHealthCheck:
         progress = self._query.lastProgress
         if progress is None:
             return None
-        import json as _json
-
+        if isinstance(progress, dict):
+            return progress
         return _json.loads(progress.json)
 
     def evaluate(self) -> HealthResult:
@@ -195,43 +196,28 @@ class StreamingHealthCheck:
 
         # Check 2: batch duration
         if self._max_batch_duration_ms is not None:
-            duration = _parse_batch_duration(progress.get("batchDuration", "0 ms"))
-            if duration > self._max_batch_duration_ms:
-                checks.append(
-                    CheckDetail(
-                        name="batch_duration",
-                        status=HealthStatus.DEGRADED,
-                        message=f"Batch took {duration}ms (max: {self._max_batch_duration_ms}ms)",
-                    )
+            duration = parse_duration_ms(progress.get("batchDuration", "0 ms"))
+            exceeded = duration > self._max_batch_duration_ms
+            checks.append(
+                CheckDetail(
+                    name="batch_duration",
+                    status=HealthStatus.DEGRADED if exceeded else HealthStatus.HEALTHY,
+                    message=f"Batch took {duration}ms"
+                    + (f" (max: {self._max_batch_duration_ms}ms)" if exceeded else ""),
                 )
-            else:
-                checks.append(
-                    CheckDetail(
-                        name="batch_duration",
-                        status=HealthStatus.HEALTHY,
-                        message=f"Batch took {duration}ms",
-                    )
-                )
+            )
 
         # Check 3: processing rate
         if self._min_processing_rate is not None:
             rate = progress.get("processedRowsPerSecond", 0.0)
-            if rate < self._min_processing_rate:
-                checks.append(
-                    CheckDetail(
-                        name="processing_rate",
-                        status=HealthStatus.DEGRADED,
-                        message=f"Processing {rate:.1f} rows/s "
-                        f"(min: {self._min_processing_rate:.1f})",
-                    )
+            below = rate < self._min_processing_rate
+            checks.append(
+                CheckDetail(
+                    name="processing_rate",
+                    status=HealthStatus.DEGRADED if below else HealthStatus.HEALTHY,
+                    message=f"Processing {rate:.1f} rows/s"
+                    + (f" (min: {self._min_processing_rate:.1f})" if below else ""),
                 )
-            else:
-                checks.append(
-                    CheckDetail(
-                        name="processing_rate",
-                        status=HealthStatus.HEALTHY,
-                        message=f"Processing {rate:.1f} rows/s",
-                    )
-                )
+            )
 
         return HealthResult(status=_worst([c.status for c in checks]), checks=checks)

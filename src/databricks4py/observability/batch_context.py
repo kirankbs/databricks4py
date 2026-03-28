@@ -56,10 +56,9 @@ class BatchContext:
         correlation_id: str | None = None,
     ) -> BatchContext:
         """Factory with optional explicit correlation ID."""
-        kwargs: dict[str, Any] = {"batch_id": batch_id, "source_table": source_table}
         if correlation_id is not None:
-            kwargs["correlation_id"] = correlation_id
-        return cls(**kwargs)
+            return cls(batch_id=batch_id, source_table=source_table, correlation_id=correlation_id)
+        return cls(batch_id=batch_id, source_table=source_table)
 
     def elapsed_ms(self) -> float:
         """Milliseconds since ``start_time``."""
@@ -85,9 +84,11 @@ class BatchLogger:
         extra_fields: dict[str, Any] | None = None,
     ) -> None:
         self._logger = logging.getLogger(logger_name)
-        self._extra = extra_fields or {}
+        self._extra = dict(extra_fields) if extra_fields else {}
 
     def _emit(self, event: str, ctx: BatchContext, level: int, **fields: Any) -> None:
+        if not self._logger.isEnabledFor(level):
+            return
         record = {
             "event": event,
             "batch_id": ctx.batch_id,
@@ -100,7 +101,6 @@ class BatchLogger:
         self._logger.log(level, json.dumps(record, default=str))
 
     def batch_start(self, ctx: BatchContext) -> None:
-        """Log that batch processing has started."""
         self._emit("batch_start", ctx, logging.INFO)
 
     def batch_complete(
@@ -109,7 +109,6 @@ class BatchLogger:
         row_count: int,
         duration_ms: float,
     ) -> None:
-        """Log successful batch completion with row count and duration."""
         self._emit(
             "batch_complete",
             ctx,
@@ -119,12 +118,10 @@ class BatchLogger:
         )
 
     def batch_error(self, ctx: BatchContext, error: str) -> None:
-        """Log a batch processing failure."""
         self._emit("batch_error", ctx, logging.ERROR, error=error[:2000])
 
     def batch_skip(self, ctx: BatchContext, reason: str) -> None:
-        """Log that a batch was skipped (empty, filtered out, etc.)."""
-        self._emit("batch_skip", ctx, logging.DEBUG, reason=reason)
+        self._emit("batch_skip", ctx, logging.DEBUG, reason=reason[:500])
 
     def batch_dlq(self, ctx: BatchContext, dlq_table: str, error: str) -> None:
         """Log that a failed batch was routed to the dead-letter queue."""

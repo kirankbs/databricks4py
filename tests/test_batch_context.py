@@ -10,6 +10,20 @@ import pytest
 from databricks4py.observability.batch_context import BatchContext, BatchLogger
 
 
+def _capture_logger(name: str) -> tuple[logging.Logger, list[logging.LogRecord]]:
+    """Set up a logger with a capture handler, return the logger and captured records."""
+    log = logging.getLogger(name)
+    log.setLevel(logging.DEBUG)
+    records: list[logging.LogRecord] = []
+
+    class Capture(logging.Handler):
+        def emit(self, record):
+            records.append(record)
+
+    log.addHandler(Capture())
+    return log, records
+
+
 @pytest.mark.no_pyspark
 class TestBatchContext:
     def test_create_auto_generates_correlation_id(self) -> None:
@@ -43,17 +57,8 @@ class TestBatchContext:
 @pytest.mark.no_pyspark
 class TestBatchLogger:
     def test_batch_start_emits_json(self) -> None:
+        _, records = _capture_logger("test.batch.start")
         bl = BatchLogger(logger_name="test.batch.start")
-        log = logging.getLogger("test.batch.start")
-        log.setLevel(logging.DEBUG)
-
-        records: list[logging.LogRecord] = []
-
-        class Capture(logging.Handler):
-            def emit(self, record):
-                records.append(record)
-
-        log.addHandler(Capture())
 
         ctx = BatchContext.create(batch_id=5, source_table="catalog.schema.events")
         bl.batch_start(ctx)
@@ -67,15 +72,8 @@ class TestBatchLogger:
         assert "timestamp" in data
 
     def test_batch_complete_includes_metrics(self) -> None:
-        records: list[logging.LogRecord] = []
-
-        class Capture(logging.Handler):
-            def emit(self, record):
-                records.append(record)
-
+        _, records = _capture_logger("test.batch.complete")
         bl = BatchLogger(logger_name="test.batch.complete")
-        logging.getLogger("test.batch.complete").setLevel(logging.DEBUG)
-        logging.getLogger("test.batch.complete").addHandler(Capture())
 
         ctx = BatchContext.create(batch_id=7, source_table="t")
         bl.batch_complete(ctx, row_count=1000, duration_ms=345.678)
@@ -86,15 +84,8 @@ class TestBatchLogger:
         assert data["duration_ms"] == 345.68
 
     def test_batch_error_truncates_long_error(self) -> None:
-        records: list[logging.LogRecord] = []
-
-        class Capture(logging.Handler):
-            def emit(self, record):
-                records.append(record)
-
+        _, records = _capture_logger("test.batch.error")
         bl = BatchLogger(logger_name="test.batch.error")
-        logging.getLogger("test.batch.error").setLevel(logging.DEBUG)
-        logging.getLogger("test.batch.error").addHandler(Capture())
 
         ctx = BatchContext.create(batch_id=0, source_table="t")
         bl.batch_error(ctx, error="x" * 5000)
@@ -103,15 +94,8 @@ class TestBatchLogger:
         assert len(data["error"]) == 2000
 
     def test_batch_skip_at_debug_level(self) -> None:
-        records: list[logging.LogRecord] = []
-
-        class Capture(logging.Handler):
-            def emit(self, record):
-                records.append(record)
-
+        _, records = _capture_logger("test.batch.skip")
         bl = BatchLogger(logger_name="test.batch.skip")
-        logging.getLogger("test.batch.skip").setLevel(logging.DEBUG)
-        logging.getLogger("test.batch.skip").addHandler(Capture())
 
         ctx = BatchContext.create(batch_id=0, source_table="t")
         bl.batch_skip(ctx, reason="empty")
@@ -119,17 +103,10 @@ class TestBatchLogger:
         assert records[0].levelno == logging.DEBUG
 
     def test_extra_fields_included(self) -> None:
-        records: list[logging.LogRecord] = []
-
-        class Capture(logging.Handler):
-            def emit(self, record):
-                records.append(record)
-
+        _, records = _capture_logger("test.batch.extra")
         bl = BatchLogger(
             logger_name="test.batch.extra", extra_fields={"env": "prod", "pipeline": "events"}
         )
-        logging.getLogger("test.batch.extra").setLevel(logging.DEBUG)
-        logging.getLogger("test.batch.extra").addHandler(Capture())
 
         ctx = BatchContext.create(batch_id=0, source_table="t")
         bl.batch_start(ctx)
@@ -139,15 +116,8 @@ class TestBatchLogger:
         assert data["pipeline"] == "events"
 
     def test_batch_dlq_includes_table(self) -> None:
-        records: list[logging.LogRecord] = []
-
-        class Capture(logging.Handler):
-            def emit(self, record):
-                records.append(record)
-
+        _, records = _capture_logger("test.batch.dlq")
         bl = BatchLogger(logger_name="test.batch.dlq")
-        logging.getLogger("test.batch.dlq").setLevel(logging.DEBUG)
-        logging.getLogger("test.batch.dlq").addHandler(Capture())
 
         ctx = BatchContext.create(batch_id=3, source_table="src")
         bl.batch_dlq(ctx, dlq_table="catalog.schema.dlq", error="boom")

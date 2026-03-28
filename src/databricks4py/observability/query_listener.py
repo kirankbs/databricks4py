@@ -25,6 +25,7 @@ Example::
 
 from __future__ import annotations
 
+import json
 import logging
 from collections import deque
 from dataclasses import dataclass, field
@@ -78,7 +79,11 @@ class QueryProgressSnapshot:
 
     @classmethod
     def from_progress(cls, progress: Any) -> QueryProgressSnapshot:
-        """Build from a PySpark ``StreamingQueryProgress`` object."""
+        """Build from a PySpark ``StreamingQueryProgress`` object.
+
+        Expects an object with a ``.json`` property returning a JSON string
+        (standard ``StreamingQueryProgress`` in PySpark 3.4+).
+        """
         import json as _json
 
         raw = progress.json
@@ -155,7 +160,8 @@ class QueryProgressObserver:
                 observer._handle_progress(event.progress)
 
             def onQueryTerminated(self, event: Any) -> None:
-                logger.info("Query terminated: id=%s exception=%s", event.id, event.exception)
+                exc_str = str(event.exception)[:500] if event.exception else None
+                logger.info("Query terminated: id=%s exception=%s", event.id, exc_str)
 
         self._listener = _Listener()
         self._spark.streams.addListener(self._listener)
@@ -171,14 +177,12 @@ class QueryProgressObserver:
 
     def _handle_progress(self, progress: Any) -> None:
         try:
-            self._handle_progress_inner(progress)
-        except Exception:
+            snapshot = QueryProgressSnapshot.from_progress(progress)
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError, AttributeError):
             logger.exception("Failed to process query progress event")
+            return
 
-    def _handle_progress_inner(self, progress: Any) -> None:
-        snapshot = QueryProgressSnapshot.from_progress(progress)
-
-        if self._query_name_filter and snapshot.query_name != self._query_name_filter:
+        if self._query_name_filter is not None and snapshot.query_name != self._query_name_filter:
             return
 
         self._history.append(snapshot)

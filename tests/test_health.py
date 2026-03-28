@@ -12,7 +12,6 @@ from databricks4py.observability.health import (
     HealthResult,
     HealthStatus,
     StreamingHealthCheck,
-    _parse_batch_duration,
     _worst,
 )
 
@@ -95,18 +94,6 @@ class TestWorst:
             _worst([HealthStatus.HEALTHY, HealthStatus.DEGRADED, HealthStatus.UNHEALTHY])
             == HealthStatus.UNHEALTHY
         )
-
-
-@pytest.mark.no_pyspark
-class TestParseBatchDuration:
-    def test_ms_string(self) -> None:
-        assert _parse_batch_duration("250 ms") == 250
-
-    def test_integer(self) -> None:
-        assert _parse_batch_duration(100) == 100
-
-    def test_invalid(self) -> None:
-        assert _parse_batch_duration("bad") == 0
 
 
 @pytest.mark.no_pyspark
