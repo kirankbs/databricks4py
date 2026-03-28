@@ -41,6 +41,27 @@ class DeltaMetricsSink(MetricsSink):
         if not self._buffer:
             return
 
+        from pyspark.sql.types import (
+            DoubleType,
+            IntegerType,
+            StringType,
+            StructField,
+            StructType,
+        )
+
+        schema = StructType(
+            [
+                StructField("job_name", StringType()),
+                StructField("event_type", StringType()),
+                StructField("timestamp", StringType()),
+                StructField("duration_ms", DoubleType()),
+                StructField("row_count", IntegerType()),
+                StructField("batch_id", IntegerType()),
+                StructField("table_name", StringType()),
+                StructField("metadata", StringType()),
+            ]
+        )
+
         rows = [
             {
                 k: str(v) if not isinstance(v, (int, float, str, type(None))) else v
@@ -48,7 +69,7 @@ class DeltaMetricsSink(MetricsSink):
             }
             for event in self._buffer
         ]
-        df = self._spark.createDataFrame(rows)
+        df = self._spark.createDataFrame(rows, schema=schema)
         df.write.format("delta").mode("append").saveAsTable(self._table_name)
         logger.info("Flushed %d metric events to %s", len(self._buffer), self._table_name)
         self._buffer.clear()

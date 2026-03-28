@@ -27,6 +27,18 @@ def _default_retryable_exceptions() -> tuple[type[BaseException], ...]:
 
 @dataclass(frozen=True)
 class RetryConfig:
+    """Configuration for :func:`retry` behaviour.
+
+    Args:
+        max_attempts: Total number of tries (including the first).
+        base_delay_seconds: Initial delay before the first retry.
+        max_delay_seconds: Upper cap on the exponentially increasing delay.
+        backoff_factor: Multiplier applied to the delay after each failure.
+        retryable_exceptions: Exception types that trigger a retry.
+            Defaults to ``ConnectionError``, ``TimeoutError``, ``OSError``,
+            and ``Py4JNetworkError`` (if py4j is installed).
+    """
+
     max_attempts: int = 3
     base_delay_seconds: float = 1.0
     max_delay_seconds: float = 60.0
@@ -39,6 +51,17 @@ class RetryConfig:
 
 
 def retry(config: RetryConfig | None = None) -> Callable:
+    """Decorator factory for retrying functions with exponential backoff.
+
+    Example::
+
+        @retry(RetryConfig(max_attempts=5, base_delay_seconds=2.0))
+        def fetch_data():
+            return requests.get(url).json()
+
+    Args:
+        config: Retry parameters. Uses defaults if ``None``.
+    """
     if config is None:
         config = RetryConfig()
 

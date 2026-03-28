@@ -42,11 +42,19 @@ class SchemaDiff:
         *,
         spark: SparkSession | None = None,
     ) -> SchemaDiff:
+        """Create a diff between an existing table's schema and an incoming DataFrame.
+
+        Args:
+            table_name: Fully qualified table to read the current schema from.
+            incoming_df: DataFrame whose schema represents the proposed change.
+            spark: Optional SparkSession.
+        """
         spark = active_fallback(spark)
         current_schema = spark.read.table(table_name).schema
         return cls(current=current_schema, incoming=incoming_df.schema)
 
     def changes(self) -> list[ColumnChange]:
+        """Compute and return the list of column-level changes between schemas."""
         if self._changes is not None:
             return self._changes
 
@@ -105,9 +113,11 @@ class SchemaDiff:
         return result
 
     def has_breaking_changes(self) -> bool:
+        """True if any change has ``severity='breaking'`` (column removal or type change)."""
         return any(c.severity == "breaking" for c in self.changes())
 
     def summary(self) -> str:
+        """Return a human-readable table of all detected changes."""
         changes = self.changes()
         if not changes:
             return "No schema changes detected."
