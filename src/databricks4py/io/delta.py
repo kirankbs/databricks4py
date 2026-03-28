@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from pyspark.sql import DataFrame, SparkSession
@@ -95,7 +96,7 @@ class DeltaTable:
         spark: SparkSession | None = None,
     ) -> None:
         self._spark = active_fallback(spark)
-        self._table_name = table_name
+        self._table_name = self._validated_table_name(table_name)
         self._schema = self._resolve_schema(schema)
         self._location = location
         self._generated_columns = list(generated_columns or [])
@@ -106,6 +107,20 @@ class DeltaTable:
             self._partition_by = list(partition_by or [])
 
         self._ensure_table_exists()
+
+    @staticmethod
+    def _validated_table_name(name: str) -> str:
+        """Validate that a table name doesn't contain SQL injection characters.
+
+        Allows word characters, dots, backticks, hyphens, spaces, and quotes
+        (all valid in Spark/Delta table identifiers). Rejects semicolons and
+        SQL comment sequences that are the primary injection vectors.
+        """
+        import re
+
+        if re.search(r"--|;|/\*|\*/", name):
+            raise ValueError(f"Unsafe characters in table name: {name!r}")
+        return name
 
     @staticmethod
     def _resolve_schema(schema: StructType | dict[str, str]) -> StructType:
@@ -251,6 +266,46 @@ class DeltaTable:
         row = self.detail().select("partitionColumns").first()
         return list(row["partitionColumns"]) if row else []
 
+    def history(self, limit: int = 20) -> DataFrame:
+        """Retrieve the Delta transaction history for this table.
+
+        Args:
+            limit: Maximum number of history entries to return (default 20).
+
+        Returns:
+            DataFrame with columns including ``version``, ``timestamp``,
+            ``operation``, and ``operationMetrics``.
+        """
+        return self._spark.sql(f"DESCRIBE HISTORY {self._table_name} LIMIT {limit}")
+
+    def restore(self, version: int) -> DataFrame:
+        """Restore this table to a prior Delta version.
+
+        Args:
+            version: The Delta version number to restore to (from :meth:`history`).
+
+        Returns:
+            DataFrame summarising the restore operation.
+        """
+        logger.info("Restoring %s to version %d", self._table_name, version)
+        return self._spark.sql(f"RESTORE TABLE {self._table_name} TO VERSION AS OF {version}")
+
+    def restore_to_timestamp(self, timestamp: datetime) -> DataFrame:
+        """Restore this table to the state at a given timestamp.
+
+        The ``timestamp`` is formatted as ``YYYY-MM-DD HH:MM:SS`` for the SQL
+        statement. Pass a timezone-aware datetime for predictable behaviour.
+
+        Args:
+            timestamp: The point in time to restore to.
+
+        Returns:
+            DataFrame summarising the restore operation.
+        """
+        ts_str = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+        logger.info("Restoring %s to timestamp %s", self._table_name, ts_str)
+        return self._spark.sql(f"RESTORE TABLE {self._table_name} TO TIMESTAMP AS OF '{ts_str}'")
+
     def merge(
         self,
         source: DataFrame,
@@ -359,7 +414,7 @@ class DeltaTable:
         history = self._spark.sql(f"DESCRIBE HISTORY {self._table_name} LIMIT 1")
         rows = history.collect()
         if not rows:
-            return
+            return _MergeResult(rows_inserted=0, rows_updated=0, rows_deleted=0)
         metrics: dict[str, str] = rows[0]["operationMetrics"] or {}
 
         result = _MergeResult(

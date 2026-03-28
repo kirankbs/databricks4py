@@ -92,6 +92,45 @@ class MergeBuilder:
         self._actions.append({"type": "not_matched_by_source_delete", "condition": condition})
         return self
 
+    def when_matched_soft_delete(
+        self,
+        *,
+        deleted_col: str = "is_deleted",
+        deleted_at_col: str | None = "deleted_at",
+        condition: str | None = None,
+    ) -> MergeBuilder:
+        """Mark matched rows as logically deleted without physically removing them.
+
+        Sets ``deleted_col`` to ``True`` and optionally ``deleted_at_col`` to
+        ``current_timestamp()``. Useful for audit-friendly delete patterns in
+        regulated environments.
+
+        Args:
+            deleted_col: Boolean column to set ``True`` on the matched row.
+            deleted_at_col: Timestamp column to set to ``current_timestamp()``.
+                Pass ``None`` to skip updating a timestamp column.
+            condition: Optional SQL condition restricting which matched rows to affect.
+
+        Returns:
+            This builder for chaining.
+
+        Raises:
+            ValueError: If ``deleted_col`` or ``deleted_at_col`` is an empty string.
+        """
+        if not deleted_col:
+            raise ValueError("deleted_col must be a non-empty column name")
+        if deleted_at_col is not None and not deleted_at_col:
+            raise ValueError("deleted_at_col must be a non-empty column name or None")
+        self._actions.append(
+            {
+                "type": "matched_soft_delete",
+                "deleted_col": deleted_col,
+                "deleted_at_col": deleted_at_col,
+                "condition": condition,
+            }
+        )
+        return self
+
     def _build_condition(self) -> str:
         if self._join_condition:
             return self._join_condition
@@ -143,6 +182,19 @@ class MergeBuilder:
             if cond:
                 return merger.whenNotMatchedBySourceDelete(condition=cond)
             return merger.whenNotMatchedBySourceDelete()
+
+        if action_type == "matched_soft_delete":
+            deleted_col = action["deleted_col"]
+            deleted_at_col = action.get("deleted_at_col")
+            cond = action.get("condition")
+
+            update_map: dict[str, str] = {deleted_col: "true"}
+            if deleted_at_col:
+                update_map[deleted_at_col] = "current_timestamp()"
+
+            if cond:
+                return merger.whenMatchedUpdate(condition=cond, set=update_map)
+            return merger.whenMatchedUpdate(set=update_map)
 
         msg = f"Unknown merge action: {action_type}"
         raise ValueError(msg)

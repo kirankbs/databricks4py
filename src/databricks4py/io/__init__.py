@@ -11,7 +11,11 @@ from databricks4py.io.delta import (
     vacuum_table,
 )
 from databricks4py.io.merge import MergeBuilder, MergeResult
-from databricks4py.io.streaming import StreamingTableReader, StreamingTriggerOptions
+from databricks4py.io.streaming import (
+    CircuitBreakerError,
+    StreamingTableReader,
+    StreamingTriggerOptions,
+)
 
 __all__ = [
     # Checkpoint
@@ -35,6 +39,7 @@ __all__ = [
     "MergeBuilder",
     "MergeResult",
     # Streaming
+    "CircuitBreakerError",
     "StreamingTableReader",
     "StreamingTriggerOptions",
 ]

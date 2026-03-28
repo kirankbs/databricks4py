@@ -19,11 +19,20 @@ if TYPE_CHECKING:
     from databricks4py.metrics.base import MetricsSink
 
 __all__ = [
+    "CircuitBreakerError",
     "StreamingTableReader",
     "StreamingTriggerOptions",
 ]
 
 logger = logging.getLogger(__name__)
+
+
+class CircuitBreakerError(RuntimeError):
+    """Raised when the streaming circuit breaker trips due to consecutive failures.
+
+    Stops the query so the issue can be investigated rather than silently
+    accumulating data in the DLQ.
+    """
 
 
 class StreamingTriggerOptions(Enum):
@@ -83,6 +92,10 @@ class StreamingTableReader(ABC):
             is written here with ``_dlq_error_message``, ``_dlq_error_timestamp``,
             and ``_dlq_batch_id`` columns appended. Uses ``mergeSchema=true`` so
             the table is auto-created on first failure.
+        max_consecutive_failures: If set, raises CircuitBreakerError on the Nth
+            consecutive batch failure (i.e. ``max_consecutive_failures=1`` means the
+            very first failure trips the breaker). Applies whether or not a DLQ is
+            configured. Resets to zero after the first subsequent successful batch.
         spark: Optional SparkSession.
     """
 
@@ -101,12 +114,15 @@ class StreamingTableReader(ABC):
         checkpoint_manager: CheckpointManager | None = None,
         metrics_sink: MetricsSink | None = None,
         dead_letter_table: str | None = None,
+        max_consecutive_failures: int | None = None,
         spark: SparkSession | None = None,
     ) -> None:
         self._spark = active_fallback(spark)
         self._source_table = source_table
         self._metrics_sink = metrics_sink
         self._dead_letter_table = dead_letter_table
+        self._max_consecutive_failures = max_consecutive_failures
+        self._consecutive_failures: int = 0
         self._query: StreamingQuery | None = None
 
         # Resolve trigger to a plain dict
@@ -169,6 +185,17 @@ class StreamingTableReader(ABC):
             error_msg[:200],
         )
 
+    def _check_circuit_breaker(self, cause: BaseException) -> None:
+        """Raise CircuitBreakerError if the failure threshold has been exceeded."""
+        if (
+            self._max_consecutive_failures is not None
+            and self._consecutive_failures >= self._max_consecutive_failures
+        ):
+            raise CircuitBreakerError(
+                f"Circuit breaker tripped after {self._consecutive_failures} consecutive "
+                f"failures on {self._source_table}"
+            ) from cause
+
     def _foreach_batch_wrapper(self, df: DataFrame, batch_id: int) -> None:
         """Internal wrapper handling empty batch detection, filtering, and metrics."""
         if self._skip_empty_batches and df.isEmpty():
@@ -187,7 +214,9 @@ class StreamingTableReader(ABC):
         start = time.monotonic()
         try:
             self.process_batch(df, batch_id)
-        except Exception:  # noqa: BLE001 — broad catch intentional: DLQ must capture all failures
+        except Exception as exc:  # noqa: BLE001 — broad catch intentional: DLQ must capture all failures
+            self._consecutive_failures += 1
+
             if self._dead_letter_table is not None:
                 import traceback
 
@@ -202,8 +231,13 @@ class StreamingTableReader(ABC):
                         exc_info=True,
                     )
                     raise
+                self._check_circuit_breaker(exc)
                 return
+
+            self._check_circuit_breaker(exc)
             raise
+        else:
+            self._consecutive_failures = 0
         duration_ms = (time.monotonic() - start) * 1000
 
         if self._metrics_sink is not None:

@@ -11,6 +11,14 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Observability subpackage: `BatchContext`, `BatchLogger`, `QueryProgressObserver`, `StreamingHealthCheck`
 - CI security scanning with Bandit and pip-audit
 - PyPI publishing workflow with trusted publishers
+- `StreamingTableReader`: `max_consecutive_failures` parameter — raises `CircuitBreakerError` after N consecutive batch failures, with or without a DLQ configured
+- `MergeBuilder.when_matched_soft_delete()` — logical delete via `is_deleted=true` / `deleted_at=current_timestamp()` without a physical row removal
+- `DeltaTable.history()`, `DeltaTable.restore()`, `DeltaTable.restore_to_timestamp()` — point-in-time rollback helpers
+- `FreshnessExpectation(column, max_age)` — data quality check that a table's most-recent timestamp is within the allowed age window; integrates with `QualityGate`
+
+### Fixed
+- `DeltaTable.scd_type2()`: returned `None` implicitly when the post-merge history was empty; now returns `MergeResult(0, 0, 0)`
+- `DeltaTable`: constructor now rejects SQL injection characters (`--`, `;`, `/*`) in table names
 
 ## [0.2.0] - 2026-03-28
 
