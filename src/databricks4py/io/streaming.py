@@ -78,6 +78,11 @@ class StreamingTableReader(ABC):
         checkpoint_manager: Optional CheckpointManager for auto-generating
             checkpoint paths.
         metrics_sink: Optional MetricsSink for emitting batch metrics.
+        dead_letter_table: Fully qualified table name to write failed batches
+            to. When set and ``process_batch`` raises, the offending DataFrame
+            is written here with ``_dlq_error_message``, ``_dlq_error_timestamp``,
+            and ``_dlq_batch_id`` columns appended. Uses ``mergeSchema=true`` so
+            the table is auto-created on first failure.
         spark: Optional SparkSession.
     """
 
@@ -95,11 +100,14 @@ class StreamingTableReader(ABC):
         read_options: dict[str, str] | None = None,
         checkpoint_manager: CheckpointManager | None = None,
         metrics_sink: MetricsSink | None = None,
+        dead_letter_table: str | None = None,
         spark: SparkSession | None = None,
     ) -> None:
         self._spark = active_fallback(spark)
         self._source_table = source_table
         self._metrics_sink = metrics_sink
+        self._dead_letter_table = dead_letter_table
+        self._query: StreamingQuery | None = None
 
         # Resolve trigger to a plain dict
         if trigger is None:
@@ -133,6 +141,34 @@ class StreamingTableReader(ABC):
         """
         ...
 
+    def _write_to_dlq(self, df: DataFrame, batch_id: int, error_msg: str) -> None:
+        """Append a failed batch to the dead-letter table with error metadata."""
+        assert self._dead_letter_table is not None  # only called when dlq is configured
+        from datetime import datetime, timezone
+
+        from pyspark.sql import functions as F
+
+        error_df = (
+            df.withColumn("_dlq_error_message", F.lit(error_msg))
+            .withColumn(
+                "_dlq_error_timestamp",
+                F.lit(datetime.now(tz=timezone.utc).isoformat()).cast("timestamp"),
+            )
+            .withColumn("_dlq_batch_id", F.lit(batch_id))
+        )
+        (
+            error_df.write.format("delta")
+            .mode("append")
+            .option("mergeSchema", "true")
+            .saveAsTable(self._dead_letter_table)
+        )
+        logger.warning(
+            "Wrote batch %d to DLQ %s: %s",
+            batch_id,
+            self._dead_letter_table,
+            error_msg[:200],
+        )
+
     def _foreach_batch_wrapper(self, df: DataFrame, batch_id: int) -> None:
         """Internal wrapper handling empty batch detection, filtering, and metrics."""
         if self._skip_empty_batches and df.isEmpty():
@@ -149,11 +185,29 @@ class StreamingTableReader(ABC):
         logger.info("Processing batch %d (%d rows)", batch_id, count)
 
         start = time.monotonic()
-        self.process_batch(df, batch_id)
+        try:
+            self.process_batch(df, batch_id)
+        except Exception:  # noqa: BLE001 — broad catch intentional: DLQ must capture all failures
+            if self._dead_letter_table is not None:
+                import traceback
+
+                original_tb = traceback.format_exc()
+                try:
+                    self._write_to_dlq(df, batch_id, original_tb)
+                except Exception:
+                    logger.error(
+                        "DLQ write failed for batch %d; original error: %s",
+                        batch_id,
+                        original_tb[:500],
+                        exc_info=True,
+                    )
+                    raise
+                return
+            raise
         duration_ms = (time.monotonic() - start) * 1000
 
         if self._metrics_sink is not None:
-            from datetime import datetime
+            from datetime import datetime, timezone
 
             from databricks4py.metrics.base import MetricEvent
 
@@ -161,7 +215,7 @@ class StreamingTableReader(ABC):
                 MetricEvent(
                     job_name=self.__class__.__name__,
                     event_type="batch_complete",
-                    timestamp=datetime.now(),
+                    timestamp=datetime.now(tz=timezone.utc),
                     duration_ms=duration_ms,
                     row_count=count,
                     batch_id=batch_id,
@@ -187,7 +241,7 @@ class StreamingTableReader(ABC):
         """
         stream_df = self._build_read_stream()
 
-        query = (
+        self._query = (
             stream_df.writeStream.foreachBatch(self._foreach_batch_wrapper)
             .trigger(**self._trigger_dict)
             .option("checkpointLocation", self._checkpoint_location)
@@ -199,4 +253,29 @@ class StreamingTableReader(ABC):
             self._source_table,
             self._trigger_dict,
         )
-        return query
+        return self._query
+
+    def stop(self, timeout_seconds: int = 30) -> None:
+        """Stop the streaming query and wait for graceful termination.
+
+        Args:
+            timeout_seconds: Maximum seconds to wait after calling stop.
+
+        Raises:
+            ValueError: If the query has not been started yet.
+        """
+        if self._query is None:
+            raise ValueError("No active query. Call start() first.")
+        self._query.stop()
+        self._query.awaitTermination(timeout=timeout_seconds)
+        logger.info("Streaming query stopped")
+
+    @property
+    def query(self) -> StreamingQuery | None:
+        """The active StreamingQuery, or None if start() has not been called."""
+        return self._query
+
+    @property
+    def is_active(self) -> bool:
+        """True if the streaming query is currently running."""
+        return self._query is not None and self._query.isActive
