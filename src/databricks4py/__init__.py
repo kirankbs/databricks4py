@@ -4,7 +4,7 @@ A collection of reusable abstractions for building PySpark applications
 on Databricks and locally.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 from databricks4py.catalog import CatalogSchema
 from databricks4py.config import Environment, JobConfig, UnityConfig
