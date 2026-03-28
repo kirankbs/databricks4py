@@ -362,6 +362,58 @@ sink.emit(MetricEvent(job_name="etl", event_type="batch_complete", timestamp=now
 sink.flush()
 ```
 
+### Observability
+
+**Structured batch logging** — JSON log records per batch with correlation IDs, queryable in any log aggregation system.
+
+```python
+from databricks4py.observability import BatchContext, BatchLogger
+
+logger = BatchLogger(extra_fields={"pipeline": "events", "env": "prod"})
+
+# Inside your StreamingTableReader.process_batch:
+ctx = BatchContext.create(batch_id=batch_id, source_table="catalog.schema.events")
+logger.batch_start(ctx)
+# ... process ...
+logger.batch_complete(ctx, row_count=df.count(), duration_ms=ctx.elapsed_ms())
+# On error:
+logger.batch_error(ctx, error=str(exc))
+```
+
+Each log line is single-line JSON: `{"event": "batch_complete", "batch_id": 42, "correlation_id": "a1b2c3d4e5f6", "row_count": 1000, ...}`
+
+**Query progress listener** — wraps PySpark 3.4+ `StreamingQueryListener` to collect progress snapshots and route them to a MetricsSink.
+
+```python
+from databricks4py.observability import QueryProgressObserver
+
+observer = QueryProgressObserver(metrics_sink=my_sink, query_name_filter="events_processor")
+observer.attach()
+
+# After the stream runs:
+latest = observer.latest_progress()
+print(f"Batch {latest.batch_id}: {latest.processed_rows_per_second} rows/sec")
+
+history = observer.history(limit=10)
+observer.detach()
+```
+
+**Health checks** — poll a streaming query for stuck detection, slow batches, and low throughput.
+
+```python
+from databricks4py.observability import StreamingHealthCheck, HealthStatus
+
+check = StreamingHealthCheck(
+    query,
+    max_batch_duration_ms=60_000,     # DEGRADED if batch > 60s
+    min_processing_rate=100.0,         # DEGRADED if < 100 rows/sec
+    stale_timeout_seconds=300,         # UNHEALTHY if no progress for 5min
+)
+result = check.evaluate()
+if result.status != HealthStatus.HEALTHY:
+    print(result.summary())
+```
+
 ### Retry
 
 ```python
@@ -457,6 +509,10 @@ src/databricks4py/
 │   ├── base.py              # MetricEvent, MetricsSink, CompositeMetricsSink
 │   ├── delta_sink.py        # DeltaMetricsSink (buffered Delta table writer)
 │   └── logging_sink.py      # LoggingMetricsSink (JSON to logger)
+├── observability/
+│   ├── batch_context.py     # BatchContext, BatchLogger (structured per-batch JSON logging)
+│   ├── query_listener.py    # QueryProgressObserver (StreamingQueryListener wrapper)
+│   └── health.py            # StreamingHealthCheck, HealthStatus, HealthResult
 └── testing/
     ├── fixtures.py          # spark_session, spark_session_function, df_builder, temp_delta
     ├── builders.py          # DataFrameBuilder (fluent test data)
