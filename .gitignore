@@ -43,9 +43,20 @@ Thumbs.db
 .claude/
 CLAUDE.md
 
-# Environment
+# Environment & secrets
 .env
-.env.local
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+credentials.*
+secrets.*
+
+# Cloud / Databricks
+.databricks/
+.azure/
+.aws/
 
 # Worktrees
 .worktrees/

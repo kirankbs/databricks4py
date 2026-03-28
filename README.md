@@ -1,5 +1,10 @@
 # databricks4py
 
+[![PyPI](https://img.shields.io/pypi/v/databricks4py)](https://pypi.org/project/databricks4py/)
+[![Python](https://img.shields.io/pypi/pyversions/databricks4py)](https://pypi.org/project/databricks4py/)
+[![CI](https://github.com/kirankbs/databricks4py/actions/workflows/ci.yml/badge.svg)](https://github.com/kirankbs/databricks4py/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 Spark, Delta Lake, and Databricks utility library for Python.
 
 The patterns you keep re-implementing across PySpark jobs — Delta table management, streaming foreachBatch wiring, schema migrations, data quality checks — packaged as a library. Runs on Databricks and locally with open-source Spark + Delta Lake.
