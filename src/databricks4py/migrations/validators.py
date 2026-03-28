@@ -7,7 +7,6 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 from pyspark.sql import SparkSession
-from pyspark.sql.utils import AnalysisException
 
 from databricks4py.io.delta import GeneratedColumn
 from databricks4py.spark_session import active_fallback
