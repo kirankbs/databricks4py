@@ -20,17 +20,13 @@ SCHEMA = StructType(
 def _column_names(spark: pyspark.sql.SparkSession, table: str) -> set[str]:
     rows = spark.sql(f"DESCRIBE TABLE {table}").collect()
     return {
-        row["col_name"]
-        for row in rows
-        if row["col_name"] and not row["col_name"].startswith("#")
+        row["col_name"] for row in rows if row["col_name"] and not row["col_name"].startswith("#")
     }
 
 
 @pytest.mark.integration
 class TestTableAlterIntegration:
-    def test_add_column(
-        self, spark_session_function: pyspark.sql.SparkSession, tmp_path
-    ) -> None:
+    def test_add_column(self, spark_session_function: pyspark.sql.SparkSession, tmp_path) -> None:
         loc = str(tmp_path / "add_col")
         DeltaTable("default.alter_add", SCHEMA, location=loc, spark=spark_session_function)
 
@@ -55,9 +51,7 @@ class TestTableAlterIntegration:
         region_row = next(r for r in rows if r["col_name"] == "region")
         assert "ISO-3166" in (region_row["comment"] or "")
 
-    def test_set_property(
-        self, spark_session_function: pyspark.sql.SparkSession, tmp_path
-    ) -> None:
+    def test_set_property(self, spark_session_function: pyspark.sql.SparkSession, tmp_path) -> None:
         loc = str(tmp_path / "set_prop")
         DeltaTable("default.alter_prop", SCHEMA, location=loc, spark=spark_session_function)
 
@@ -77,8 +71,7 @@ class TestTableAlterIntegration:
             "'delta.minWriterVersion' = '5')"
         )
         spark.sql(
-            f"ALTER TABLE {table_name} SET TBLPROPERTIES ("
-            "'delta.columnMapping.mode' = 'name')"
+            f"ALTER TABLE {table_name} SET TBLPROPERTIES ('delta.columnMapping.mode' = 'name')"
         )
 
     def test_rename_column(
@@ -97,9 +90,7 @@ class TestTableAlterIntegration:
         assert "full_name" in cols
         assert "name" not in cols
 
-    def test_drop_column(
-        self, spark_session_function: pyspark.sql.SparkSession, tmp_path
-    ) -> None:
+    def test_drop_column(self, spark_session_function: pyspark.sql.SparkSession, tmp_path) -> None:
         loc = str(tmp_path / "drop")
         DeltaTable("default.alter_drop", SCHEMA, location=loc, spark=spark_session_function)
 

@@ -43,9 +43,7 @@ class TestDeltaMetricsSinkIntegration:
         df = spark_session_function.read.table("default.test_metrics_flush")
         assert df.count() == 3
 
-    def test_threshold_auto_flush(
-        self, spark_session_function: pyspark.sql.SparkSession
-    ) -> None:
+    def test_threshold_auto_flush(self, spark_session_function: pyspark.sql.SparkSession) -> None:
         sink = DeltaMetricsSink(
             "default.test_metrics_threshold",
             spark=spark_session_function,
@@ -57,9 +55,7 @@ class TestDeltaMetricsSinkIntegration:
         df = spark_session_function.read.table("default.test_metrics_threshold")
         assert df.count() == 2
 
-    def test_flush_clears_buffer(
-        self, spark_session_function: pyspark.sql.SparkSession
-    ) -> None:
+    def test_flush_clears_buffer(self, spark_session_function: pyspark.sql.SparkSession) -> None:
         sink = DeltaMetricsSink("default.test_metrics_clear", spark=spark_session_function)
         sink.emit(_event())
         sink.flush()
@@ -70,16 +66,12 @@ class TestDeltaMetricsSinkIntegration:
         df = spark_session_function.read.table("default.test_metrics_clear")
         assert df.count() == 3
 
-    def test_empty_flush_noop(
-        self, spark_session_function: pyspark.sql.SparkSession
-    ) -> None:
+    def test_empty_flush_noop(self, spark_session_function: pyspark.sql.SparkSession) -> None:
         sink = DeltaMetricsSink("default.test_metrics_empty", spark=spark_session_function)
         sink.flush()
         assert not spark_session_function.catalog.tableExists("default.test_metrics_empty")
 
-    def test_event_fields_roundtrip(
-        self, spark_session_function: pyspark.sql.SparkSession
-    ) -> None:
+    def test_event_fields_roundtrip(self, spark_session_function: pyspark.sql.SparkSession) -> None:
         sink = DeltaMetricsSink("default.test_metrics_fields", spark=spark_session_function)
         sink.emit(
             _event(

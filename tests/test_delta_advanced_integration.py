@@ -61,9 +61,7 @@ class TestSCDType2Integration:
         self, spark_session_function: pyspark.sql.SparkSession, tmp_path
     ) -> None:
         location = str(tmp_path / "scd2_init")
-        table = self._make_scd2_table(
-            spark_session_function, "default.scd2_init", location
-        )
+        table = self._make_scd2_table(spark_session_function, "default.scd2_init", location)
 
         source = spark_session_function.createDataFrame(
             [(1, "Alice", 100), (2, "Bob", 200)], schema=BASE_SCHEMA
@@ -81,9 +79,7 @@ class TestSCDType2Integration:
         self, spark_session_function: pyspark.sql.SparkSession, tmp_path
     ) -> None:
         location = str(tmp_path / "scd2_update")
-        table = self._make_scd2_table(
-            spark_session_function, "default.scd2_update", location
-        )
+        table = self._make_scd2_table(spark_session_function, "default.scd2_update", location)
 
         source_v1 = spark_session_function.createDataFrame(
             [(1, "Alice", 100), (2, "Bob", 200)], schema=BASE_SCHEMA
@@ -91,9 +87,7 @@ class TestSCDType2Integration:
         table.scd_type2(source_v1, keys=["id"])
 
         # Second merge: Alice's matched row gets expired
-        source_v2 = spark_session_function.createDataFrame(
-            [(1, "Alice", 150)], schema=BASE_SCHEMA
-        )
+        source_v2 = spark_session_function.createDataFrame([(1, "Alice", 150)], schema=BASE_SCHEMA)
         table.scd_type2(source_v2, keys=["id"])
 
         result = table.dataframe()
@@ -106,9 +100,7 @@ class TestSCDType2Integration:
         self, spark_session_function: pyspark.sql.SparkSession, tmp_path
     ) -> None:
         location = str(tmp_path / "scd2_stable")
-        table = self._make_scd2_table(
-            spark_session_function, "default.scd2_stable", location
-        )
+        table = self._make_scd2_table(spark_session_function, "default.scd2_stable", location)
 
         source = spark_session_function.createDataFrame(
             [(1, "Alice", 100), (2, "Bob", 200)], schema=BASE_SCHEMA
@@ -116,9 +108,7 @@ class TestSCDType2Integration:
         table.scd_type2(source, keys=["id"])
 
         # Merge only Alice — Bob should be unaffected
-        source_v2 = spark_session_function.createDataFrame(
-            [(1, "Alice", 150)], schema=BASE_SCHEMA
-        )
+        source_v2 = spark_session_function.createDataFrame([(1, "Alice", 150)], schema=BASE_SCHEMA)
         table.scd_type2(source_v2, keys=["id"])
 
         bob_rows = table.dataframe().where("id = 2").collect()
@@ -180,7 +170,9 @@ class TestSchemaCheckIntegration:
 
         location = str(tmp_path / "schema_add")
         table = DeltaTable(
-            "default.schema_check_add", BASE_SCHEMA, location=location,
+            "default.schema_check_add",
+            BASE_SCHEMA,
+            location=location,
             spark=spark_session_function,
         )
         df1 = spark_session_function.createDataFrame([(1, "a", 10)], schema=BASE_SCHEMA)
@@ -200,7 +192,9 @@ class TestSchemaCheckIntegration:
     ) -> None:
         location = str(tmp_path / "schema_remove")
         table = DeltaTable(
-            "default.schema_check_remove", BASE_SCHEMA, location=location,
+            "default.schema_check_remove",
+            BASE_SCHEMA,
+            location=location,
             spark=spark_session_function,
         )
         df1 = spark_session_function.createDataFrame([(1, "a", 10)], schema=BASE_SCHEMA)

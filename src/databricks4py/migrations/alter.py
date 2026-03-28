@@ -68,9 +68,7 @@ class TableAlter:
         not_null = "" if nullable else " NOT NULL"
         comment_clause = f" COMMENT '{_sql_str(comment)}'" if comment else ""
         after_clause = f" AFTER {after}" if after else ""
-        self._ops.append(
-            f"ADD COLUMN ({name} {data_type}{not_null}{comment_clause}{after_clause})"
-        )
+        self._ops.append(f"ADD COLUMN ({name} {data_type}{not_null}{comment_clause}{after_clause})")
         return self
 
     def rename_column(self, old_name: str, new_name: str) -> TableAlter:

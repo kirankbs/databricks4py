@@ -56,9 +56,7 @@ class TestMigrationRunnerIntegration:
             DeltaTable("default.mig_idempotent", SCHEMA, location=location, spark=spark)
 
         runner = MigrationRunner("default.mig_history_idemp", spark=spark_session_function)
-        runner.register(
-            MigrationStep(version="V001", description="Create", up=create_table)
-        )
+        runner.register(MigrationStep(version="V001", description="Create", up=create_table))
         runner.run()
 
         result2 = runner.run()
@@ -103,9 +101,7 @@ class TestMigrationRunnerIntegration:
         assert fail_rows[0]["version"] == "V002"
         assert "intentional failure" in fail_rows[0]["error_message"]
 
-    def test_pre_validation_blocks(
-        self, spark_session_function: pyspark.sql.SparkSession
-    ) -> None:
+    def test_pre_validation_blocks(self, spark_session_function: pyspark.sql.SparkSession) -> None:
         runner = MigrationRunner("default.mig_history_pre", spark=spark_session_function)
         runner.register(
             MigrationStep(
@@ -149,9 +145,7 @@ class TestMigrationRunnerIntegration:
             MigrationStep(
                 version="V001",
                 description="create table",
-                up=lambda s: s.sql(
-                    "CREATE TABLE default.mig_dry_target (id INT) USING DELTA"
-                ),
+                up=lambda s: s.sql("CREATE TABLE default.mig_dry_target (id INT) USING DELTA"),
             )
         )
         result = runner.run(dry_run=True)
@@ -175,9 +169,7 @@ class TestMigrationRunnerIntegration:
             spark.sql("ALTER TABLE default.mig_ddl_target ADD COLUMNS (age INT)")
 
         runner = MigrationRunner("default.mig_history_ddl", spark=spark_session_function)
-        runner.register(
-            MigrationStep(version="V001", description="Add age column", up=add_column)
-        )
+        runner.register(MigrationStep(version="V001", description="Add age column", up=add_column))
         runner.run()
 
         cols = {

@@ -166,9 +166,9 @@ class TestStreamingStop:
     def test_start_stores_query(self) -> None:
         mock_spark = MagicMock()
         mock_query = MagicMock()
-        mock_spark.readStream.format.return_value.table.return_value.writeStream\
-            .foreachBatch.return_value.trigger.return_value\
-            .option.return_value.start.return_value = mock_query
+        write_chain = mock_spark.readStream.format.return_value.table.return_value
+        start = write_chain.writeStream.foreachBatch.return_value
+        start.trigger.return_value.option.return_value.start.return_value = mock_query
 
         with patch("databricks4py.io.streaming.active_fallback", return_value=mock_spark):
             reader = _OkReader(source_table="t", checkpoint_location="/cp")

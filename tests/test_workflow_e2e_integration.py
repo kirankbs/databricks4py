@@ -42,9 +42,7 @@ class TestWorkflowQualityIntegration:
         self, spark_session_function: pyspark.sql.SparkSession
     ) -> None:
         sink = _CollectingSink()
-        df = spark_session_function.createDataFrame(
-            [(1, "a", 80), (2, "b", 90)], schema=SCHEMA
-        )
+        df = spark_session_function.createDataFrame([(1, "a", 80), (2, "b", 90)], schema=SCHEMA)
         gate = QualityGate(NotNull("id"), RowCount(min_count=1))
 
         class MyWorkflow(Workflow):
@@ -62,9 +60,7 @@ class TestWorkflowQualityIntegration:
     def test_quality_check_raise_on_bad_data(
         self, spark_session_function: pyspark.sql.SparkSession
     ) -> None:
-        df = spark_session_function.createDataFrame(
-            [(1, None, 80)], schema=SCHEMA
-        )
+        df = spark_session_function.createDataFrame([(1, None, 80)], schema=SCHEMA)
         gate = QualityGate(NotNull("name"), on_fail="raise")
 
         class MyWorkflow(Workflow):
@@ -108,9 +104,7 @@ class TestWorkflowMetricsSinkIntegration:
     def test_execute_writes_lifecycle_metrics(
         self, spark_session_function: pyspark.sql.SparkSession
     ) -> None:
-        sink = DeltaMetricsSink(
-            "default.wf_metrics", spark=spark_session_function, buffer_size=100
-        )
+        sink = DeltaMetricsSink("default.wf_metrics", spark=spark_session_function, buffer_size=100)
 
         class MyWorkflow(Workflow):
             def run(self_wf):
@@ -138,7 +132,9 @@ class TestEndToEndFlows:
             [StructField("id", IntegerType()), StructField("name", StringType())]
         )
         DeltaTable(
-            "default.e2e_mig_val", base_schema, location=location,
+            "default.e2e_mig_val",
+            base_schema,
+            location=location,
             spark=spark_session_function,
         )
 
@@ -165,7 +161,9 @@ class TestEndToEndFlows:
             [StructField("id", IntegerType()), StructField("name", StringType())]
         )
         table = DeltaTable(
-            "default.e2e_mig_diff", base_schema, location=location,
+            "default.e2e_mig_diff",
+            base_schema,
+            location=location,
             spark=spark_session_function,
         )
         # Write initial data
@@ -173,9 +171,7 @@ class TestEndToEndFlows:
         table.write(df1)
 
         # Migration adds column
-        spark_session_function.sql(
-            "ALTER TABLE default.e2e_mig_diff ADD COLUMNS (score INT)"
-        )
+        spark_session_function.sql("ALTER TABLE default.e2e_mig_diff ADD COLUMNS (score INT)")
 
         # Schema diff between old schema and current table
         new_schema = StructType(base_schema.fields + [StructField("score", IntegerType())])
