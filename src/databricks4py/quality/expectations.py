@@ -22,7 +22,7 @@ class NotNull(Expectation):
     def validate(self, df: DataFrame) -> ExpectationResult:
         total = df.count()
         condition = self.failing_condition()
-        failing = df.where(condition).count() if condition else 0
+        failing = df.where(condition).count() if condition is not None else 0
         return ExpectationResult(
             expectation=repr(self),
             passed=failing == 0,
@@ -54,7 +54,7 @@ class InRange(Expectation):
     def validate(self, df: DataFrame) -> ExpectationResult:
         total = df.count()
         condition = self.failing_condition()
-        failing = df.where(condition).count() if condition else 0
+        failing = df.where(condition).count() if condition is not None else 0
         return ExpectationResult(
             expectation=repr(self),
             passed=failing == 0,
@@ -135,7 +135,7 @@ class MatchesRegex(Expectation):
     def validate(self, df: DataFrame) -> ExpectationResult:
         total = df.count()
         condition = self.failing_condition()
-        failing = df.where(condition).count() if condition else 0
+        failing = df.where(condition).count() if condition is not None else 0
         return ExpectationResult(
             expectation=repr(self),
             passed=failing == 0,

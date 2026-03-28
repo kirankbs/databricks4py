@@ -35,9 +35,9 @@ def _get_dbutils() -> Any:
     if _dbutils_module is None:
         raise RuntimeError("dbutils module not injected. Call inject_dbutils_module() first.")
 
-    from databricks4py.spark_session import get_active
+    from pyspark.sql import SparkSession
 
-    spark = get_active()
+    spark = SparkSession.getActiveSession()
     return _dbutils_module.DBUtils(spark)
 
 

@@ -144,9 +144,7 @@ class TestMigrationRunnerRun:
         assert result.failed == "V002"
         assert "V003" not in result.applied
         assert order == ["V001"]
-        runner._record.assert_called_with(
-            runner._steps[1], success=False, error_message="boom"
-        )
+        runner._record.assert_called_with(runner._steps[1], success=False, error_message="boom")
 
     def test_pre_validate_failure_raises(self) -> None:
         runner = _make_runner()

@@ -12,12 +12,38 @@ logger = logging.getLogger(__name__)
 
 
 class Environment(Enum):
+    """Deployment environment. Resolved automatically from Databricks widgets or env vars."""
+
     DEV = "dev"
     STAGING = "staging"
     PROD = "prod"
 
 
 class JobConfig:
+    """Configuration container for Databricks job parameters.
+
+    Resolves the deployment environment from (in priority order):
+    1. ``spark.databricks.widget.env`` conf (Databricks widget)
+    2. ``ENV`` or ``ENVIRONMENT`` environment variable
+    3. Defaults to ``DEV``
+
+    Example::
+
+        config = JobConfig(
+            tables={"events": "catalog.bronze.events", "users": "catalog.silver.users"},
+            secret_scope="my-scope",
+            spark_configs={"spark.sql.shuffle.partitions": "8"},
+        )
+        table_name = config.table("events")  # "catalog.bronze.events"
+
+    Args:
+        tables: Mapping of logical names to fully qualified table names.
+        secret_scope: Databricks secret scope for :meth:`secret` lookups.
+        storage_root: Optional root path for storage operations.
+        spark_configs: Spark configuration overrides applied by
+            :meth:`~databricks4py.workflow.Workflow.execute`.
+    """
+
     def __init__(
         self,
         tables: dict[str, str],
@@ -58,6 +84,11 @@ class JobConfig:
             return Environment.DEV
 
     def table(self, name: str) -> str:
+        """Look up a fully qualified table name by logical key.
+
+        Raises:
+            KeyError: If *name* is not in the configured tables.
+        """
         try:
             return self.tables[name]
         except KeyError:
@@ -65,6 +96,11 @@ class JobConfig:
             raise KeyError(f"Table '{name}' not configured. Available: {available}") from None
 
     def secret(self, key: str) -> str:
+        """Fetch a secret from Databricks using the configured scope.
+
+        Raises:
+            ValueError: If no ``secret_scope`` was configured.
+        """
         if self.secret_scope is None:
             raise ValueError("No secret_scope configured on this JobConfig")
 
