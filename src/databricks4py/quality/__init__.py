@@ -11,6 +11,7 @@ from databricks4py.quality.expectations import (
     Unique,
 )
 from databricks4py.quality.gate import QualityError, QualityGate
+from databricks4py.quality.profiler import ColumnProfile, DataProfile, profile
 
 __all__ = [
     "ColumnExists",
@@ -25,4 +26,8 @@ __all__ = [
     "QualityReport",
     "RowCount",
     "Unique",
+    # Profiler
+    "ColumnProfile",
+    "DataProfile",
+    "profile",
 ]

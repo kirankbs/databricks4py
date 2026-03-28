@@ -10,6 +10,7 @@ from databricks4py.io.delta import (
     optimize_table,
     vacuum_table,
 )
+from databricks4py.io.maintenance import MaintenanceResult, MaintenanceRunner, analyze_table
 from databricks4py.io.merge import MergeBuilder, MergeResult
 from databricks4py.io.streaming import (
     CircuitBreakerError,
@@ -35,6 +36,10 @@ __all__ = [
     "GeneratedColumn",
     "optimize_table",
     "vacuum_table",
+    # Maintenance
+    "MaintenanceResult",
+    "MaintenanceRunner",
+    "analyze_table",
     # Merge
     "MergeBuilder",
     "MergeResult",

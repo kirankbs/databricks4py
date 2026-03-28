@@ -15,6 +15,9 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `MergeBuilder.when_matched_soft_delete()` — logical delete via `is_deleted=true` / `deleted_at=current_timestamp()` without a physical row removal
 - `DeltaTable.history()`, `DeltaTable.restore()`, `DeltaTable.restore_to_timestamp()` — point-in-time rollback helpers
 - `FreshnessExpectation(column, max_age)` — data quality check that a table's most-recent timestamp is within the allowed age window; integrates with `QualityGate`
+- Column transforms: `snake_case_columns`, `prefix_columns`, `suffix_columns`, `flatten_struct`, `single_space`, `trim_all` — DataFrame column utilities inspired by common community patterns
+- Data profiler: `profile(df)` returns `DataProfile` with per-column stats (null%, distinct count, min/max, mean) computed in a single aggregation pass
+- Table maintenance: `analyze_table()`, `MaintenanceRunner` composing OPTIMIZE + VACUUM + ANALYZE with metrics support
 
 ### Fixed
 - `DeltaTable.scd_type2()`: returned `None` implicitly when the post-merge history was empty; now returns `MergeResult(0, 0, 0)`
