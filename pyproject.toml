@@ -70,4 +70,9 @@ ignore_missing_imports = true
 
 [tool.bandit]
 exclude_dirs = ["tests"]
-skips = ["B101"]  # allow assert in production code (used for preconditions)
+skips = [
+    "B101",  # assert used for preconditions
+    "B110",  # try/except/pass in MetricsSink.flush() default no-op
+    "B311",  # uuid4() for correlation IDs, not crypto
+    "B608",  # Spark SQL f-strings — table names are developer-provided, not user input
+]
