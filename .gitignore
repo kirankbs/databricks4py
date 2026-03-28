@@ -39,9 +39,10 @@ spark-warehouse/
 .DS_Store
 Thumbs.db
 
-# Claude
+# Claude / AI tooling (keep local, never publish)
 .claude/
 CLAUDE.md
+docs/superpowers/
 
 # Environment & secrets
 .env
