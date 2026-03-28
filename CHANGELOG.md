@@ -7,6 +7,8 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-03-28
+
 ### Added
 - Observability subpackage: `BatchContext`, `BatchLogger`, `QueryProgressObserver`, `StreamingHealthCheck`
 - CI security scanning with Bandit and pip-audit
