@@ -64,7 +64,7 @@ class DeltaMetricsSink(MetricsSink):
 
         rows = [
             {
-                k: str(v) if not isinstance(v, (int, float, str, type(None))) else v
+                k: str(v) if not isinstance(v, int | float | str | type(None)) else v
                 for k, v in asdict(event).items()
             }
             for event in self._buffer
