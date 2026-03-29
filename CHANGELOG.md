@@ -7,6 +7,13 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Security
+- SHA-pin all GitHub Actions to prevent tag/branch hijacking (trivy-class supply chain attacks)
+- Pin CI tool versions (`ruff`, `bandit`, `pip-audit`, `build`) to prevent PyPI-sourced CI poisoning
+- Cap dependency version ranges with upper bounds (`pyspark>=3.4,<5`) to block surprise major upgrades
+- Add explicit `permissions: contents: read` to CI workflow (principle of least privilege)
+- Add Dependabot for automated CVE alerts on GitHub Actions and pip dependencies
+
 ### Added
 - Table deduplication: `kill_duplicates`, `drop_duplicates_pkey`, `append_without_duplicates` — UC-compatible Delta dedup via SQL merge (not path-based like mack)
 - DataFrame validation: `validate_presence_of_columns`, `validate_absence_of_columns`, `validate_schema` with custom exceptions (`DataFrameMissingColumnError`, `DataFrameProhibitedColumnError`, `DataFrameSchemaError`)

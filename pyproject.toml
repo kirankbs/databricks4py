@@ -26,16 +26,16 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "pyspark>=3.4",
-    "delta-spark>=2.4",
+    "pyspark>=3.4,<5",
+    "delta-spark>=2.4,<5",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.0",
-    "pytest-timeout>=2.0",
-    "ruff>=0.4",
-    "mypy>=1.10",
+    "pytest>=8.0,<9",
+    "pytest-timeout>=2.0,<3",
+    "ruff>=0.4,<1",
+    "mypy>=1.10,<2",
 ]
 
 [project.urls]
