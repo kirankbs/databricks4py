@@ -7,6 +7,15 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Table deduplication: `kill_duplicates`, `drop_duplicates_pkey`, `append_without_duplicates` — UC-compatible Delta dedup via SQL merge (not path-based like mack)
+- DataFrame validation: `validate_presence_of_columns`, `validate_absence_of_columns`, `validate_schema` with custom exceptions (`DataFrameMissingColumnError`, `DataFrameProhibitedColumnError`, `DataFrameSchemaError`)
+- Validation decorators: `@validate_input()` and `@validate_output()` for declarative schema enforcement on transformation functions
+- Checkpoint compatibility checker: `check_compatibility()` compares checkpoint source schema against current schema, flags breaking changes, recommends reset vs resume
+- Checkpoint diagnostics: `diagnose_checkpoint()` inspects health, detects corruption (gaps, orphaned commits, pending batches), reports size and metadata
+- Performance anti-pattern linter: `lint(df)` analyzes Spark query plans for cartesian products, broadcast nested loops, full table scans, deep plans, excessive columns
+- Collect safety checker: `check_collect_safety(df)` estimates whether `collect()` is safe based on plan statistics
+
 ## [0.3.0] - 2026-03-28
 
 ### Added

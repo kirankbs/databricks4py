@@ -1,7 +1,20 @@
 """I/O utilities for Delta Lake, DBFS, and streaming."""
 
 from databricks4py.io.checkpoint import CheckpointInfo, CheckpointManager
+from databricks4py.io.checkpoint_compat import (
+    CheckpointDiagnostic,
+    CheckpointHealth,
+    CompatibilityResult,
+    check_compatibility,
+    diagnose_checkpoint,
+)
 from databricks4py.io.dbfs import copy_from_remote, inject_dbutils_module, ls, mkdirs, mv, rm
+from databricks4py.io.dedup import (
+    DedupResult,
+    append_without_duplicates,
+    drop_duplicates_pkey,
+    kill_duplicates,
+)
 from databricks4py.io.delta import (
     DeltaTable,
     DeltaTableAppender,
@@ -22,6 +35,17 @@ __all__ = [
     # Checkpoint
     "CheckpointInfo",
     "CheckpointManager",
+    # Checkpoint Compatibility
+    "CheckpointDiagnostic",
+    "CheckpointHealth",
+    "CompatibilityResult",
+    "check_compatibility",
+    "diagnose_checkpoint",
+    # Dedup
+    "DedupResult",
+    "append_without_duplicates",
+    "drop_duplicates_pkey",
+    "kill_duplicates",
     # DBFS
     "copy_from_remote",
     "inject_dbutils_module",
