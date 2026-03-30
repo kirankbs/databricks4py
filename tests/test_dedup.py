@@ -20,6 +20,12 @@ SCHEMA = StructType(
 )
 
 
+def _create_table(spark: pyspark.sql.SparkSession, name: str, data: list[tuple]) -> str:
+    df = spark.createDataFrame(data, schema=SCHEMA)
+    df.write.format("delta").mode("overwrite").saveAsTable(name)
+    return name
+
+
 @pytest.mark.no_pyspark
 class TestDedupResult:
     def test_frozen(self) -> None:
@@ -54,15 +60,10 @@ class TestSqlInjection:
 
 @pytest.mark.integration
 class TestKillDuplicates:
-    def _create_table(self, spark: pyspark.sql.SparkSession, name: str, data: list[tuple]) -> str:
-        df = spark.createDataFrame(data, schema=SCHEMA)
-        df.write.format("delta").mode("overwrite").saveAsTable(name)
-        return name
-
     def test_removes_all_duplicate_copies(
         self, spark_session_function: pyspark.sql.SparkSession
     ) -> None:
-        table = self._create_table(
+        table = _create_table(
             spark_session_function,
             "default.kill_dup_basic",
             [
@@ -82,7 +83,7 @@ class TestKillDuplicates:
         assert names == ["bob"]
 
     def test_no_duplicates(self, spark_session_function: pyspark.sql.SparkSession) -> None:
-        table = self._create_table(
+        table = _create_table(
             spark_session_function,
             "default.kill_dup_none",
             [(1, "alice", 100), (2, "bob", 200), (3, "carol", 300)],
@@ -92,7 +93,7 @@ class TestKillDuplicates:
         assert result.rows_remaining == 3
 
     def test_empty_columns_raises(self, spark_session_function: pyspark.sql.SparkSession) -> None:
-        self._create_table(
+        _create_table(
             spark_session_function,
             "default.kill_dup_err",
             [(1, "alice", 100)],
@@ -101,7 +102,7 @@ class TestKillDuplicates:
             kill_duplicates("default.kill_dup_err", [], spark=spark_session_function)
 
     def test_multi_column_dedup(self, spark_session_function: pyspark.sql.SparkSession) -> None:
-        table = self._create_table(
+        table = _create_table(
             spark_session_function,
             "default.kill_dup_multi",
             [
@@ -118,13 +119,8 @@ class TestKillDuplicates:
 
 @pytest.mark.integration
 class TestDropDuplicatesPkey:
-    def _create_table(self, spark: pyspark.sql.SparkSession, name: str, data: list[tuple]) -> str:
-        df = spark.createDataFrame(data, schema=SCHEMA)
-        df.write.format("delta").mode("overwrite").saveAsTable(name)
-        return name
-
     def test_keeps_lowest_pkey(self, spark_session_function: pyspark.sql.SparkSession) -> None:
-        table = self._create_table(
+        table = _create_table(
             spark_session_function,
             "default.drop_dup_basic",
             [
@@ -142,7 +138,7 @@ class TestDropDuplicatesPkey:
         assert remaining[1]["id"] == 2  # bob untouched
 
     def test_no_duplicates(self, spark_session_function: pyspark.sql.SparkSession) -> None:
-        table = self._create_table(
+        table = _create_table(
             spark_session_function,
             "default.drop_dup_none",
             [(1, "alice", 100), (2, "bob", 200)],
@@ -152,7 +148,7 @@ class TestDropDuplicatesPkey:
         assert result.rows_remaining == 2
 
     def test_empty_pkey_raises(self, spark_session_function: pyspark.sql.SparkSession) -> None:
-        self._create_table(
+        _create_table(
             spark_session_function,
             "default.drop_dup_err1",
             [(1, "alice", 100)],
@@ -165,7 +161,7 @@ class TestDropDuplicatesPkey:
     def test_empty_duplication_columns_raises(
         self, spark_session_function: pyspark.sql.SparkSession
     ) -> None:
-        self._create_table(
+        _create_table(
             spark_session_function,
             "default.drop_dup_err2",
             [(1, "alice", 100)],
@@ -176,13 +172,8 @@ class TestDropDuplicatesPkey:
 
 @pytest.mark.integration
 class TestAppendWithoutDuplicates:
-    def _create_table(self, spark: pyspark.sql.SparkSession, name: str, data: list[tuple]) -> str:
-        df = spark.createDataFrame(data, schema=SCHEMA)
-        df.write.format("delta").mode("overwrite").saveAsTable(name)
-        return name
-
     def test_inserts_new_rows_only(self, spark_session_function: pyspark.sql.SparkSession) -> None:
-        table = self._create_table(
+        table = _create_table(
             spark_session_function,
             "default.append_nodup_basic",
             [(1, "alice", 100), (2, "bob", 200)],
@@ -200,7 +191,7 @@ class TestAppendWithoutDuplicates:
         assert bob_row["value"] == 200  # unchanged
 
     def test_all_new(self, spark_session_function: pyspark.sql.SparkSession) -> None:
-        table = self._create_table(
+        table = _create_table(
             spark_session_function,
             "default.append_nodup_allnew",
             [(1, "alice", 100)],
@@ -213,7 +204,7 @@ class TestAppendWithoutDuplicates:
         assert inserted == 2
 
     def test_all_duplicates(self, spark_session_function: pyspark.sql.SparkSession) -> None:
-        table = self._create_table(
+        table = _create_table(
             spark_session_function,
             "default.append_nodup_alldup",
             [(1, "alice", 100), (2, "bob", 200)],
@@ -227,7 +218,7 @@ class TestAppendWithoutDuplicates:
         assert spark_session_function.read.table(table).count() == 2
 
     def test_empty_keys_raises(self, spark_session_function: pyspark.sql.SparkSession) -> None:
-        self._create_table(
+        _create_table(
             spark_session_function,
             "default.append_nodup_err",
             [(1, "alice", 100)],
@@ -239,7 +230,7 @@ class TestAppendWithoutDuplicates:
             )
 
     def test_multi_key_dedup(self, spark_session_function: pyspark.sql.SparkSession) -> None:
-        table = self._create_table(
+        table = _create_table(
             spark_session_function,
             "default.append_nodup_multi",
             [(1, "alice", 100)],

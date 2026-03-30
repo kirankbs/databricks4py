@@ -237,6 +237,7 @@ def diagnose_checkpoint(checkpoint_path: str) -> CheckpointDiagnostic:
     last_batch_id = max(commit_batches) if commit_batches else None
 
     # Check for gaps in committed batches
+    gaps: list[int] = []
     if commit_batches:
         expected = set(range(min(commit_batches), max(commit_batches) + 1))
         gaps = sorted(expected - commit_batches)
@@ -251,10 +252,7 @@ def diagnose_checkpoint(checkpoint_path: str) -> CheckpointDiagnostic:
         issues.append("Missing metadata file.")
 
     # Determine health
-    has_gaps = commit_batches and (
-        set(range(min(commit_batches), max(commit_batches) + 1)) - commit_batches
-    )
-    if orphaned_commits or has_gaps:
+    if orphaned_commits or gaps:
         health = CheckpointHealth.CORRUPTED
     elif issues:
         health = CheckpointHealth.DEGRADED
@@ -341,7 +339,6 @@ def _read_metadata(path: str) -> dict[str, Any]:
     try:
         with open(path) as f:
             content = f.read().strip()
-        # Metadata can be JSON or a custom format
         return json.loads(content)
     except (json.JSONDecodeError, OSError):
         return {}

@@ -105,7 +105,6 @@ def lint(df: DataFrame) -> LintReport:
 
     warnings: list[LintWarning] = []
 
-    # Get both logical and physical plans as strings
     logical_plan = _get_plan(df, extended=False)
     physical_plan = _get_plan(df, extended=True)
 
@@ -141,9 +140,8 @@ def check_collect_safety(
     """
     plan_str = _get_plan(df, extended=True)
 
-    # Try to extract sizeInBytes from the plan's statistics
     estimated_rows = _extract_row_estimate(plan_str)
-    estimated_bytes = _extract_size_estimate(plan_str)
+    estimated_bytes = _extract_size_estimate(plan_str) if max_bytes is not None else None
 
     issues = []
     if estimated_rows is not None and estimated_rows > max_rows:
@@ -270,29 +268,23 @@ def _check_excessive_columns(df: DataFrame) -> list[LintWarning]:
 
 def _check_deeply_nested_plan(plan: str) -> list[LintWarning]:
     """Detect deeply nested plans (often from .withColumn() in a loop)."""
-    # Count indentation levels as a proxy for plan depth
-    max_depth = 0
     for line in plan.split("\n"):
         stripped = line.lstrip()
-        if stripped:
-            depth = len(line) - len(stripped)
-            max_depth = max(max_depth, depth)
-
-    if max_depth > 200:
-        return [
-            LintWarning(
-                rule="DEEP_PLAN",
-                severity=Severity.WARNING,
-                message=(
-                    f"Query plan is deeply nested (depth ~{max_depth}). "
-                    "This often results from calling .withColumn() in a loop."
-                ),
-                suggestion=(
-                    "Replace multiple .withColumn() calls with a single .select() "
-                    "that computes all new columns at once."
-                ),
-            )
-        ]
+        if stripped and len(line) - len(stripped) > 200:
+            return [
+                LintWarning(
+                    rule="DEEP_PLAN",
+                    severity=Severity.WARNING,
+                    message=(
+                        "Query plan is deeply nested (depth >200). "
+                        "This often results from calling .withColumn() in a loop."
+                    ),
+                    suggestion=(
+                        "Replace multiple .withColumn() calls with a single .select() "
+                        "that computes all new columns at once."
+                    ),
+                )
+            ]
     return []
 
 
@@ -300,7 +292,11 @@ def _check_deeply_nested_plan(plan: str) -> list[LintWarning]:
 
 
 def _get_plan(df: DataFrame, *, extended: bool = False) -> str:
-    """Get the query plan as a string without printing to stdout."""
+    """Get the query plan as a string without printing to stdout.
+
+    Uses the private ``_jdf`` bridge — there is no public PySpark API for
+    reading the plan string without side-effecting stdout (``df.explain()``).
+    """
     if extended:
         return df._jdf.queryExecution().toString()
     return df._jdf.queryExecution().simpleString()

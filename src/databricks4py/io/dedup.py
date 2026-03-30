@@ -38,6 +38,10 @@ def _validate_identifier(name: str, label: str = "identifier") -> str:
     return name
 
 
+def _merge_condition(cols: list[str]) -> str:
+    return " AND ".join(f"target.{c} = source.{c}" for c in cols)
+
+
 @dataclass(frozen=True)
 class DedupResult:
     """Immutable result from a dedup operation.
@@ -92,14 +96,14 @@ def kill_duplicates(
     # Find groups with more than one row, then delete all rows matching those groups
     dup_df = _spark.read.table(table_name).groupBy(cols).count().where("count > 1").drop("count")
 
-    if dup_df.count() == 0:
+    if dup_df.isEmpty():
         logger.info("No duplicates found in %s on columns [%s]", table_name, col_list)
         return DedupResult(rows_removed=0, rows_remaining=count_before)
 
     from delta.tables import DeltaTable
 
     dt = DeltaTable.forName(_spark, table_name)
-    condition = " AND ".join(f"target.{c} = source.{c}" for c in cols)
+    condition = _merge_condition(cols)
 
     (dt.alias("target").merge(dup_df.alias("source"), condition).whenMatchedDelete().execute())
 
@@ -170,16 +174,15 @@ def drop_duplicates_pkey(
 
     duplicates_to_remove = ranked.where("_dedup_rank > 1").select(pkeys)
 
-    if duplicates_to_remove.count() == 0:
+    if duplicates_to_remove.isEmpty():
         logger.info("No duplicates found in %s", table_name)
         return DedupResult(rows_removed=0, rows_remaining=count_before)
 
-    # Merge-based delete: match duplicate rows by primary key and remove them.
-    # This is concurrent-write safe (unlike a full overwrite).
+    # Concurrent-write safe: merge-delete avoids the lost-update risk of a full overwrite.
     from delta.tables import DeltaTable
 
     dt = DeltaTable.forName(_spark, table_name)
-    pkey_condition = " AND ".join(f"target.{k} = source.{k}" for k in pkeys)
+    pkey_condition = _merge_condition(pkeys)
 
     (
         dt.alias("target")
@@ -243,13 +246,11 @@ def append_without_duplicates(
     from delta.tables import DeltaTable
 
     dt = DeltaTable.forName(_spark, table_name)
-    condition = " AND ".join(f"target.{k} = source.{k}" for k in key_list)
+    condition = _merge_condition(key_list)
 
     (dt.alias("target").merge(df.alias("source"), condition).whenNotMatchedInsertAll().execute())
 
-    # Read merge metrics from history
-    history = _spark.sql(f"DESCRIBE HISTORY {table_name} LIMIT 1")
-    rows = history.collect()
+    rows = dt.history(1).collect()
     inserted = 0
     if rows:
         metrics = rows[0]["operationMetrics"] or {}
